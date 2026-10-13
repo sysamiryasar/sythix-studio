@@ -137,7 +137,7 @@ export function CommandPalette({ open, onClose, data }: { open: boolean; onClose
               }
             }}
             placeholder="Search projects, items, servers, players, teams, settings…"
-            className="h-12 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-faint"
+            className="h-12 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-faint focus-visible:outline-none"
             role="combobox"
             aria-expanded="true"
             aria-controls="sx-palette-list"

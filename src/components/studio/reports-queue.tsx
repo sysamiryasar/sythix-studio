@@ -1,10 +1,10 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import Link from "next/link";
 import { useState } from "react";
 import { Flag } from "lucide-react";
 import { api } from "@/lib/client/api";
-import { formatRelative } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, Panel } from "@/components/ui/panel";
@@ -40,7 +40,7 @@ export function ReportsQueue({ reports: initial }: { reports: Report[] }) {
               </div>
               {r.details && <p className="mt-1 text-xs text-muted">{r.details}</p>}
               <p className="mt-1 text-[11px] text-faint">
-                Reported by @{r.reporter} · {formatRelative(r.created_at)}
+                Reported by @{r.reporter} · <RelativeTime ts={r.created_at} />
               </p>
             </div>
             <div className="flex gap-2">

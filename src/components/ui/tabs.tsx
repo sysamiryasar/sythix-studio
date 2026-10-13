@@ -1,16 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 
 /** Route-based tabs; each tab is a real URL so state survives reloads and sharing. */
 export function RouteTabs({ tabs }: { tabs: { href: string; label: string; exact?: boolean }[] }) {
   const pathname = usePathname();
+  const search = useSearchParams().toString();
+  const full = search ? `${pathname}?${search}` : pathname;
+  const exactHit = tabs.some((t) => t.href === full);
+  const isActive = (t: { href: string; exact?: boolean }) =>
+    exactHit ? t.href === full : t.exact ? pathname === t.href : pathname === t.href || pathname.startsWith(`${t.href}/`);
   return (
     <nav aria-label="Sections" className="sx-scroll -mx-1 mb-5 flex gap-1 overflow-x-auto border-b border-border px-1">
       {tabs.map((t) => {
-        const active = t.exact ? pathname === t.href : pathname === t.href || pathname.startsWith(`${t.href}/`);
+        const active = isActive(t);
         return (
           <Link
             key={t.href}

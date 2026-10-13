@@ -1,10 +1,10 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import { useState } from "react";
 import { Hammer, IdCard, Package, Rocket, Server, Shield, Sparkles, Star, Users, type LucideIcon } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { cn } from "@/lib/cn";
-import { formatRelative } from "@/lib/format";
 import { Stat } from "@/components/ui/panel";
 import { useToast } from "@/components/ui/toast";
 import type { AchievementView } from "@/modules/nexusid/achievements";
@@ -52,7 +52,7 @@ export function AchievementsBoard({ items }: { items: AchievementView[] }) {
                   <div className="text-xs text-muted">{a.description}</div>
                   <div className="mt-2 flex items-center justify-between text-[11px] text-faint">
                     <span>
-                      {a.points} pts · {got ? `unlocked ${formatRelative(a.awarded_at)}` : "locked"}
+                      {a.points} pts · {got ? <>unlocked <RelativeTime ts={a.awarded_at} /></> : "locked"}
                     </span>
                     {got && (
                       <button className={cn("hover:underline", showcase.has(a.id) ? "text-accent" : "text-muted")} onClick={() => toggle(a.id)} aria-pressed={showcase.has(a.id)}>

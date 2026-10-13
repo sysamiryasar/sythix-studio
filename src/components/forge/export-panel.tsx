@@ -1,12 +1,13 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AlertTriangle, CheckCircle2, Download, Info, Package, Rocket, XCircle } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { cn } from "@/lib/cn";
-import { formatBytes, formatRelative } from "@/lib/format";
+import { formatBytes } from "@/lib/format";
 import type { ValidationReport } from "@/modules/forgeos/validate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,7 +89,7 @@ export function ExportPanel({ projectId, report, formats, exports, canExport, ca
                       {e.format} · r{e.revision} · Java {e.target_version}
                     </div>
                     <div className="text-[11px] text-faint">
-                      @{e.author} · {formatRelative(e.created_at)} {e.size_bytes ? `· ${formatBytes(e.size_bytes)}` : ""} {e.sha256 ? <span className="font-mono">· sha256 {e.sha256.slice(0, 12)}…</span> : null}
+                      @{e.author} · <RelativeTime ts={e.created_at} /> {e.size_bytes ? `· ${formatBytes(e.size_bytes)}` : ""} {e.sha256 ? <span className="font-mono">· sha256 {e.sha256.slice(0, 12)}…</span> : null}
                     </div>
                   </div>
                   {e.status === "succeeded" ? (

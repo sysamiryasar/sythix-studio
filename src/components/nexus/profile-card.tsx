@@ -34,7 +34,8 @@ export function ProfileBanner({
 }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-surface">
-      <div className={cn("sx-voxel-grid relative h-28 sm:h-36", BANNERS[bannerStyle]?.className ?? BANNERS.obsidian!.className)}>
+      <div className={cn("relative h-28 sm:h-36", BANNERS[bannerStyle]?.className ?? BANNERS.obsidian!.className)}>
+        <div className="sx-voxel-grid absolute inset-0" aria-hidden />
         <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-surface to-transparent" />
       </div>
       <div className="relative -mt-10 flex flex-col gap-4 px-5 pb-5 sm:flex-row sm:items-end">

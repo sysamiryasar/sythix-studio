@@ -1,4 +1,4 @@
-import { open, readFile, stat } from "node:fs/promises";
+import { open, readdir, readFile, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { AgentConfig } from "./config.js";
@@ -162,7 +162,8 @@ export class SimulatedBackend implements ServerBackend {
   private bansDirty = true;
   private lines: ConsoleLine[] = [];
   private timer: NodeJS.Timeout;
-  constructor() {
+  /** Sample server directory; datapack listings reflect files actually installed there. */
+  constructor(private readonly datapacksDir?: string) {
     this.log("INFO", "[SIMULATED] Sample environment started — this is not a real Minecraft server");
     this.timer = setInterval(() => this.log("INFO", `[SIMULATED] ${this.players.length} sample players online`), 30_000);
   }
@@ -193,7 +194,8 @@ export class SimulatedBackend implements ServerBackend {
     } else if (root === "minecraft:reload") {
       out = "Reloading!";
     } else if (root === "datapack") {
-      out = "There are 2 data pack(s) enabled: [vanilla (built-in)], [file/sythix-sample.zip (world)]";
+      const files = this.datapacksDir ? (await readdir(this.datapacksDir).catch(() => [] as string[])).filter((f) => f.endsWith(".zip")) : [];
+      out = `There are ${files.length + 1} data pack(s) enabled: [vanilla (built-in)]${files.map((f) => `, [file/${f} (world)]`).join("")}`;
     } else {
       out = `[SIMULATED] Command accepted: ${command}`;
     }
