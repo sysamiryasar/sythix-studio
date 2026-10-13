@@ -109,11 +109,11 @@ export function MetricChart({ title, points, unit = "", min, max, format = (v) =
             ))}
             <text x={PAD.l} y={H - 4} fontSize={10} fill="var(--sx-faint)">{new Date(t0).toISOString().slice(11, 16)}</text>
             <text x={W - PAD.r} y={H - 4} fontSize={10} textAnchor="end" fill="var(--sx-faint)">{new Date(t1).toISOString().slice(11, 16)} UTC</text>
-            <path d={path} fill="none" stroke="var(--sx-accent)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+            <path d={path} fill="none" stroke="var(--sx-chart)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
             {h?.v != null && (
               <g>
                 <line x1={x(h.t)} x2={x(h.t)} y1={PAD.t} y2={H - PAD.b} stroke="var(--sx-border-strong)" strokeWidth={1} />
-                <circle cx={x(h.t)} cy={y(h.v)} r={4} fill="var(--sx-accent)" stroke="var(--sx-surface)" strokeWidth={2} />
+                <circle cx={x(h.t)} cy={y(h.v)} r={4} fill="var(--sx-chart)" stroke="var(--sx-surface)" strokeWidth={2} />
               </g>
             )}
           </svg>

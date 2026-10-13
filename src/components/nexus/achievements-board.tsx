@@ -42,7 +42,7 @@ export function AchievementsBoard({ items }: { items: AchievementView[] }) {
           const Icon = ICONS[a.icon] ?? Star;
           const got = !!a.awarded_at;
           return (
-            <div key={a.id} className={cn("rounded-lg border p-4", got ? "border-border bg-surface" : "border-dashed border-border bg-transparent opacity-60")}>
+            <div key={a.id} className={cn("rounded-lg border p-4", got ? "border-border bg-surface" : "border-dashed border-border bg-transparent")}>
               <div className="flex items-start gap-3">
                 <span className={cn("flex h-10 w-10 items-center justify-center rounded-md", got ? "bg-accent-soft text-accent" : "bg-surface-2 text-faint")}>
                   <Icon className="h-5 w-5" />

@@ -49,8 +49,8 @@ export function ExportPanel({ projectId, report, formats, exports, canExport, ca
               <div key={k} className={cn("flex gap-2 rounded-md px-2 py-1.5 text-xs", i.severity === "error" ? "bg-danger/10 text-danger" : i.severity === "warning" ? "bg-warning/10 text-warning" : "text-muted")}>
                 {i.severity === "info" ? <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
                 <span>
-                  <span className="font-mono opacity-80">{i.entity}</span> — {i.message}
-                  {i.formats?.length ? <span className="opacity-70"> (blocks {i.formats.join(", ")})</span> : null}
+                  <span className="font-mono">{i.entity}</span> — {i.message}
+                  {i.formats?.length ? <span> (blocks {i.formats.join(", ")})</span> : null}
                 </span>
               </div>
             ))}
