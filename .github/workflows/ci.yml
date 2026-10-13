@@ -38,6 +38,10 @@ jobs:
         run: pnpm exec wrangler d1 migrations apply sythix-db --local
       - name: Cloudflare Workers build (OpenNext)
         run: pnpm cf:build
+      - name: Bundle the Worker entry (dry run)
+        run: pnpm exec wrangler deploy --dry-run --outdir .wrangler/dry-run
+      - name: Build server agent
+        run: pnpm agent:build
       - name: Secret scan of tracked files
         run: |
           if git grep -nE '(CLOUDFLARE_API_TOKEN|RESEND_API_KEY|MS_CLIENT_SECRET)\s*=\s*[A-Za-z0-9_\-]{12,}' -- ':!*.md' ':!.dev.vars.example'; then

@@ -15,7 +15,7 @@ export const serverModule = defineModule({
   ],
   dependencies: { studio: "^0.1.0" },
   platform: ">=0.1.0 <1.0.0",
-  migrations: ["0003_serveros.sql"],
+  migrations: ["0003_serveros.sql", "0006_serveros_agent.sql"],
   featureFlags: [{ key: "serveros.config-editor", description: "Allow editing plugin configuration files through the agent.", defaultEnabled: true }],
   async healthCheck(ctx) {
     const r = await one<{ total: number; online: number }>(
