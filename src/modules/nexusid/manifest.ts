@@ -24,7 +24,7 @@ export const nexusModule = defineModule({
   permissions: [],
   dependencies: { studio: "^0.1.0" },
   platform: ">=0.1.0 <1.0.0",
-  migrations: ["0002_nexusid.sql"],
+  migrations: ["0002_nexusid.sql", "0005_oauth_states.sql"],
   featureFlags: [
     { key: "nexusid.minecraft-linking", description: "Minecraft Java account linking via Microsoft sign-in (requires MS_CLIENT_ID).", defaultEnabled: false },
   ],
