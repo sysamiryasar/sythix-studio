@@ -14,7 +14,7 @@
     "build": "node scripts/gen-release-info.mjs && next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "node scripts/gen-release-info.mjs && tsc --noEmit",
+    "typecheck": "node scripts/gen-release-info.mjs && tsc --noEmit && tsc --noEmit -p agent",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "pnpm lint && pnpm typecheck && pnpm test",

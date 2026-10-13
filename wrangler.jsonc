@@ -5,7 +5,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sythix-studio",
-  "main": ".open-next/worker.js",
+  "main": "worker.ts",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
@@ -24,7 +24,7 @@
     }
   ],
   "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets-dev" }],
-  "triggers": { "crons": [] },
+  "triggers": { "crons": ["* * * * *"] },
 
   "env": {
     "staging": {
@@ -39,7 +39,8 @@
           "migrations_dir": "migrations"
         }
       ],
-      "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets-staging" }]
+      "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets-staging" }],
+      "triggers": { "crons": ["* * * * *"] }
     },
     "production": {
       "name": "sythix-studio",
@@ -53,7 +54,8 @@
           "migrations_dir": "migrations"
         }
       ],
-      "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets" }]
+      "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets" }],
+      "triggers": { "crons": ["* * * * *"] }
     }
   }
 }
