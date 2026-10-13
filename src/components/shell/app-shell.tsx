@@ -68,7 +68,7 @@ export function AppShell({ data, children }: { data: ShellData; children: ReactN
 
   return (
     <div className="flex min-h-dvh">
-      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[200] focus:rounded focus:bg-accent focus:px-3 focus:py-1.5 focus:text-white">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[200] focus:rounded focus:bg-accent-strong focus:px-3 focus:py-1.5 focus:text-white">
         Skip to content
       </a>
       <Sidebar data={data} collapsed={collapsed} onToggle={toggleSidebar} />

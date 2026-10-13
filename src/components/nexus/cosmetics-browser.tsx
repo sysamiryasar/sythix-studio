@@ -54,7 +54,7 @@ export function CosmeticsBrowser({ items: initial }: { items: CosmeticView[] }) 
                     }
                   })();
                   return (
-                    <div key={c.id} className={cn("rounded-lg border p-3", c.equipped ? "border-accent bg-accent-soft" : "border-border bg-surface-2", !c.owned && "opacity-70")}>
+                    <div key={c.id} className={cn("rounded-lg border p-3", c.equipped ? "border-accent bg-accent-soft" : "border-border bg-surface-2", !c.owned && "border-dashed bg-transparent")}>
                       <div className="flex items-start gap-3">
                         <span className="h-10 w-10 shrink-0 rounded-md border border-border-strong" style={{ background: color }} aria-hidden />
                         <div className="min-w-0 flex-1">

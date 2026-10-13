@@ -161,7 +161,7 @@ function Notifications({ initialUnread }: { initialUnread: number }) {
         >
           <Bell className="h-4 w-4" />
           {unread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-accent px-1 text-center text-[10px] font-semibold leading-4 text-white">
+            <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-accent-strong px-1 text-center text-[10px] font-semibold leading-4 text-white">
               {unread > 99 ? "99+" : unread}
             </span>
           )}
