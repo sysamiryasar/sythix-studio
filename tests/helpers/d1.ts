@@ -80,7 +80,7 @@ export function createTestD1(): D1Database & { sqlite: DatabaseSync } {
 
 /** Applies migrations/*.sql in order and records them in d1_migrations like Wrangler does. */
 export function applyMigrations(db: DatabaseSync): string[] {
-  const dir = path.resolve(__dirname, "../../migrations");
+  const dir = path.resolve(import.meta.dirname, "../../migrations");
   const files = readdirSync(dir).filter((f) => f.endsWith(".sql")).sort();
   db.exec(`CREATE TABLE IF NOT EXISTS d1_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)`);
   for (const f of files) {
