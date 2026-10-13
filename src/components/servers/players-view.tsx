@@ -1,9 +1,9 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "@/lib/client/api";
-import { formatRelative } from "@/lib/format";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, StatusDot } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -115,7 +115,7 @@ export function PlayersView({ serverId, data, online, canModerate, environment, 
                   {h.reason && <span className="text-xs text-muted"> — {h.reason}</span>}
                 </span>
                 <span className="shrink-0 text-[11px] text-faint">
-                  @{h.actor} · {formatRelative(h.created_at)} · {h.status ?? "unknown"}
+                  @{h.actor} · <RelativeTime ts={h.created_at} /> · {h.status ?? "unknown"}
                 </span>
               </li>
             ))}

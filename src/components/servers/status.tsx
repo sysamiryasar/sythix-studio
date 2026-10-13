@@ -1,5 +1,7 @@
+"use client";
+
 import { Badge, StatusDot } from "@/components/ui/badge";
-import { formatRelative } from "@/lib/format";
+import { RelativeTime } from "@/components/ui/relative-time";
 import type { ServerSummary } from "@/modules/serveros/servers";
 
 export function ConnectionBadge({ c }: { c: ServerSummary["connection"] }) {
@@ -16,7 +18,7 @@ export function ConnectionBadge({ c }: { c: ServerSummary["connection"] }) {
   if (c.state === "offline")
     return (
       <Badge tone="danger">
-        <StatusDot tone="danger" label="Disconnected" /> Disconnected · last seen {formatRelative(c.lastHeartbeatAt)}
+        <StatusDot tone="danger" label="Disconnected" /> Disconnected · last seen <RelativeTime ts={c.lastHeartbeatAt} />
       </Badge>
     );
   return (

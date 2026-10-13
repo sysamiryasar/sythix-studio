@@ -1,11 +1,11 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Archive, Copy, Folder, Hammer, Plus, RotateCcw } from "lucide-react";
 import { api } from "@/lib/client/api";
-import { formatRelative } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
@@ -99,7 +99,7 @@ export function ProjectList(props: {
                     <p className="mt-2 line-clamp-2 min-h-8 text-xs text-muted">{p.description || "No description."}</p>
                     <div className="mt-3 flex items-center justify-between text-[11px] text-faint">
                       <span>
-                        {p.item_count} item{p.item_count === 1 ? "" : "s"} · r{p.current_revision} · {formatRelative(p.updated_at)}
+                        {p.item_count} item{p.item_count === 1 ? "" : "s"} · r{p.current_revision} · <RelativeTime ts={p.updated_at} />
                       </span>
                       <span className="relative z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
                         {props.canCreate && (

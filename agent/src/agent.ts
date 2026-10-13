@@ -20,7 +20,7 @@ export class Agent {
   readonly executor: Executor;
 
   constructor(private readonly cfg: AgentConfig, backend?: ServerBackend, private readonly fetchImpl: typeof fetch = fetch) {
-    this.backend = backend ?? (cfg.mode === "simulated" ? new SimulatedBackend() : new LiveBackend(cfg));
+    this.backend = backend ?? (cfg.mode === "simulated" ? new SimulatedBackend(path.join(cfg.serverDir, cfg.worldName, "datapacks")) : new LiveBackend(cfg));
     this.executor = new Executor(cfg, this.backend, {
       artifact: async (id) => {
         const res = await this.fetchImpl(new URL(`/api/agent/v1/deployments/${encodeURIComponent(id)}/artifact`, cfg.apiUrl), { headers: { authorization: `Bearer ${cfg.token}` } });

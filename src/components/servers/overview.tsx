@@ -1,8 +1,9 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
-import { formatBytes, formatDuration, formatRelative } from "@/lib/format";
+import { formatBytes, formatDuration } from "@/lib/format";
 import type { ServerSummary } from "@/modules/serveros/servers";
 import { DataSourceBadge } from "@/components/ui/badge";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
@@ -76,7 +77,7 @@ export function ServerOverview({
     <div className="space-y-6">
       {c.state === "offline" && (
         <div role="alert" className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
-          This server is disconnected. Figures below are the last values reported {formatRelative(c.lastHeartbeatAt, now)}; no operations can be sent until the agent reconnects.
+          This server is disconnected. Figures below are the last values reported <RelativeTime ts={c.lastHeartbeatAt} now={now} />; no operations can be sent until the agent reconnects.
         </div>
       )}
       {c.simulated && (
@@ -94,7 +95,7 @@ export function ServerOverview({
         <MetricTile label="Software" value={`${c.reportedSoftware ?? server.software} ${c.reportedVersion ?? server.mc_version}`} source={c.reportedVersion ? src(1) : "unavailable"} hint={c.reportedVersion && c.reportedVersion !== server.mc_version ? `Registered as ${server.mc_version}` : "From version_history.json"} />
         <MetricTile label="Connected for" value={c.connectedSince ? formatDuration(now - c.connectedSince) : "—"} source={c.connectedSince ? src(1) : "unavailable"} hint="Agent connection uptime; server process uptime isn't exposed over RCON" />
         <MetricTile label="Agent" value={c.agentVersion ?? "—"} source={c.agentVersion ? src(1) : "unavailable"} hint={c.capabilities.length ? c.capabilities.join(", ") : "No capabilities while offline"} />
-        <MetricTile label="Last heartbeat" value={formatRelative(c.lastHeartbeatAt, now)} source={c.state === "online" ? (c.simulated ? "sample" : "live") : "stale"} />
+        <MetricTile label="Last heartbeat" value={<RelativeTime ts={c.lastHeartbeatAt} now={now} />} source={c.state === "online" ? (c.simulated ? "sample" : "live") : "stale"} />
       </div>
       <div className="flex justify-end">
         <SegmentedControl label="Time range" value={range} onChange={setRange} options={[{ value: "1h", label: "1h" }, { value: "6h", label: "6h" }, { value: "24h", label: "24h" }, { value: "7d", label: "7d" }]} />
@@ -112,7 +113,7 @@ export function ServerOverview({
             {alerts.map((a, i) => (
               <li key={i} className="flex justify-between px-4 py-2">
                 <span>{a.title}</span>
-                <span className="text-xs text-faint">{formatRelative(a.created_at, now)}</span>
+                <span className="text-xs text-faint"><RelativeTime ts={a.created_at} now={now} /></span>
               </li>
             ))}
           </ul>
@@ -123,7 +124,7 @@ export function ServerOverview({
             {events.map((e, i) => (
               <li key={i} className="flex justify-between gap-3 px-4 py-2">
                 <span className="truncate font-mono text-xs text-muted">{e.action}</span>
-                <span className="shrink-0 text-xs text-faint">{e.actor ? `@${e.actor} · ` : ""}{formatRelative(e.created_at, now)}</span>
+                <span className="shrink-0 text-xs text-faint">{e.actor ? `@${e.actor} · ` : ""}<RelativeTime ts={e.created_at} now={now} /></span>
               </li>
             ))}
           </ul>

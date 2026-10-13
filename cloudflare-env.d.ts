@@ -14,4 +14,8 @@ interface CloudflareEnv {
   EMAIL_FROM?: string;
   MS_CLIENT_ID?: string;
   MS_CLIENT_SECRET?: string;
+  /** owner/repo whose GitHub releases are checked for updates (public repos only). */
+  RELEASES_REPO?: string;
+  /** Commit/environment label shown on the updates page, set by CI at deploy time. */
+  DEPLOYMENT_LABEL?: string;
 }

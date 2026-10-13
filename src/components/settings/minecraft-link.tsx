@@ -1,6 +1,7 @@
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import { Badge } from "@/components/ui/badge";
 import { formatDateTime } from "@/lib/format";
+import { MinecraftUnlink } from "./minecraft-unlink";
 
 /**
  * Minecraft Java linking uses Microsoft sign-in (OAuth) followed by the Xbox Live
@@ -19,7 +20,10 @@ export function MinecraftLinkPanel({ identity, available }: { identity: { provid
               <div className="font-medium">{identity.provider_name}</div>
               <div className="font-mono text-xs text-faint">{identity.provider_subject}</div>
             </div>
-            <Badge tone="success">Verified {formatDateTime(identity.verified_at)}</Badge>
+            <span className="flex items-center gap-2">
+              <Badge tone="success">Verified {formatDateTime(identity.verified_at)}</Badge>
+              <MinecraftUnlink />
+            </span>
           </div>
         ) : available ? (
           <a className="text-accent hover:underline" href="/api/v1/nexus/minecraft/link">

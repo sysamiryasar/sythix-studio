@@ -1,10 +1,10 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Monitor } from "lucide-react";
 import { api } from "@/lib/client/api";
-import { formatRelative } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +42,7 @@ export function SessionList({ sessions, current }: { sessions: Session[]; curren
                 {describeAgent(s.user_agent)} {s.id === current && <Badge tone="accent">This device</Badge>}
               </div>
               <div className="text-xs text-faint">
-                {s.ip ?? "Unknown IP"} · active {formatRelative(s.last_seen_at)} · signed in {formatRelative(s.created_at)}
+                {s.ip ?? "Unknown IP"} · active <RelativeTime ts={s.last_seen_at} /> · signed in <RelativeTime ts={s.created_at} />
               </div>
             </div>
             {s.id !== current && (

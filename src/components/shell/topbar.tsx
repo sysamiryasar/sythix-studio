@@ -1,12 +1,12 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Bell, Check, ChevronRight, ChevronsUpDown, LogOut, Menu, Search, Settings, User, Briefcase } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { cn } from "@/lib/cn";
-import { formatRelative } from "@/lib/format";
 import type { ShellData } from "@/lib/shell";
 import { Avatar } from "@/components/ui/avatar";
 import { Kbd } from "@/components/ui/badge";
@@ -200,7 +200,7 @@ function Notifications({ initialUnread }: { initialUnread: number }) {
                 <span className="min-w-0">
                   <span className="block text-sm text-fg">{n.title}</span>
                   {n.body && <span className="block truncate text-xs text-muted">{n.body}</span>}
-                  <span className="text-[11px] text-faint">{formatRelative(n.created_at)}</span>
+                  <span className="text-[11px] text-faint"><RelativeTime ts={n.created_at} /></span>
                 </span>
               </Link>
             ))}
@@ -269,7 +269,7 @@ export function Topbar({ data, onOpenPalette, onOpenMobileNav }: { data: ShellDa
       <div className="ml-auto flex items-center gap-1.5">
         <button
           onClick={onOpenPalette}
-          className="flex h-8 items-center gap-2 rounded-md border border-border bg-surface-2 px-2.5 text-xs text-muted hover:border-border-strong hover:text-fg sm:w-56"
+          className="flex h-8 items-center gap-2 whitespace-nowrap rounded-md border border-border bg-surface-2 px-2.5 text-xs text-muted hover:border-border-strong hover:text-fg sm:w-64"
           aria-label="Search and commands"
         >
           <Search className="h-3.5 w-3.5" />

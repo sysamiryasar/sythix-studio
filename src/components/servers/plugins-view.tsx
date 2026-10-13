@@ -1,9 +1,9 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AlertTriangle, FileCode, RefreshCw } from "lucide-react";
-import { formatRelative } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -57,7 +57,7 @@ export function PluginsView({ serverId, plugins, online, mcVersion, canRead, can
       <Panel>
         <PanelHeader
           title={`Installed plugins (${plugins.length})`}
-          description={plugins[0] ? `Inventory reported ${formatRelative(plugins[0].reported_at)}.` : "No inventory reported yet."}
+          description={plugins[0] ? <>Inventory reported <RelativeTime ts={plugins[0].reported_at} />.</> : "No inventory reported yet."}
           actions={
             canScan && (
               <Button

@@ -1,10 +1,10 @@
 "use client";
 
+import { RelativeTime } from "@/components/ui/relative-time";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
 import { api } from "@/lib/client/api";
-import { formatRelative } from "@/lib/format";
 import { ROLE_LABELS, SERVER_MATRIX, type ServerRole } from "@/lib/authz/roles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -112,10 +112,10 @@ export function AccessView({ serverId, appUrl, members, credentials, canManageMe
                 <div className="min-w-0 flex-1">
                   {c.label} <span className="font-mono text-xs text-faint">sxa_{c.token_prefix}_…</span>
                   <div className="text-[11px] text-faint">
-                    by @{c.created_by_name} {formatRelative(c.created_at)} · last used {formatRelative(c.last_used_at)}
+                    by @{c.created_by_name} <RelativeTime ts={c.created_at} /> · last used <RelativeTime ts={c.last_used_at} />
                   </div>
                 </div>
-                {c.revoked_at ? <Badge>Revoked {formatRelative(c.revoked_at)}</Badge> : (
+                {c.revoked_at ? <Badge>Revoked <RelativeTime ts={c.revoked_at} /></Badge> : (
                   <>
                     <Badge tone="success">Active</Badge>
                     <Button size="sm" variant="ghost" onClick={() => setRevoking(c)}>Revoke</Button>
