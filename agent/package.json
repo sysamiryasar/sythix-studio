@@ -1,0 +1,13 @@
+{
+  "name": "@sythix/server-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SythiX ServerOS agent for Paper/Purpur servers. Connects outbound to SythiX Studio.",
+  "type": "module",
+  "bin": { "sythix-agent": "dist/agent.js" },
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/agent.js"
+  }
+}
