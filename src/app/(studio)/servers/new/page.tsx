@@ -13,7 +13,7 @@ export default async function NewServerPage() {
   return (
     <div className="max-w-3xl">
       <PageHeader eyebrow="ServerOS" title="Register a server" description={`Adds a server to ${current.name} and generates a revocable agent credential.`} />
-      <ConnectWizard canRegister={workspaceCan(current.role, "server.register")} verified={user.emailVerified} appUrl={ctx.env.APP_URL} />
+      <ConnectWizard canRegister={workspaceCan(current.role, "server.register")} verified={user.emailVerified} appUrl={ctx.env.APP_URL ?? ""} />
     </div>
   );
 }

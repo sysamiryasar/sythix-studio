@@ -6,6 +6,22 @@ All notable changes to SythiX Studio are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- **One-click Cloudflare deploy**: the repository now deploys with Cloudflare's default
+  "Import a repository" settings (`pnpm run build`, `npx wrangler deploy`). D1 and R2 are
+  created on deploy (no IDs in `wrangler.jsonc`), the top-level Wrangler config is production
+  (staging stays under `env.staging`), and `APP_URL` defaults to the request host.
+- The Worker applies pending D1 migrations itself on first use (`AUTO_MIGRATE=off` disables),
+  using Wrangler's `d1_migrations` table.
+- Turnstile is optional in production: without a secret, sign-up and reset rely on rate limits
+  and a warning is logged.
+
+### Added
+- First-owner bootstrap: with no email provider and no users, the first registration becomes a
+  verified platform owner (respecting `PLATFORM_OWNER_EMAILS` when set).
+- **Studio → Users** page where platform owners can verify accounts manually, and an
+  "Installation setup" checklist on the Modules page for optional providers.
+
 ## [0.1.0] - 2026-10-13
 
 ### Added

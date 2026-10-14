@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { PanelLeftClose, PanelLeftOpen, Puzzle, RefreshCw, ScrollText, Settings, ShieldAlert } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Puzzle, RefreshCw, ScrollText, Settings, ShieldAlert, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ModuleIcon } from "@/components/ui/icon";
 import type { ShellData } from "@/lib/shell";
@@ -68,6 +68,7 @@ export function SidebarNav({ data, collapsed, onNavigate }: { data: ShellData; c
         {item("/studio/updates", "Updates", <RefreshCw className="h-4 w-4" />, isActive(pathname, "/studio/updates"))}
         {item("/studio/audit", "Audit log", <ScrollText className="h-4 w-4" />, isActive(pathname, "/studio/audit"))}
         {data.isPlatformAdmin && item("/studio/reports", "Reports", <ShieldAlert className="h-4 w-4" />, isActive(pathname, "/studio/reports"))}
+        {data.user.platformRole === "platform_owner" && item("/studio/users", "Users", <Users className="h-4 w-4" />, isActive(pathname, "/studio/users"))}
         {item("/settings", "Settings", <Settings className="h-4 w-4" />, isActive(pathname, "/settings"))}
       </div>
     </nav>

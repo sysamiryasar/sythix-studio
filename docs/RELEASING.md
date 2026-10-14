@@ -31,8 +31,8 @@ migrations outside this workflow.
 **Worker code** (fast, no data change):
 
 ```bash
-pnpm exec wrangler deployments list --env production
-pnpm exec wrangler rollback <version-id> --env production
+pnpm exec wrangler deployments list
+pnpm exec wrangler rollback <version-id>
 ```
 
 Rolling back code is safe when the release's migrations were additive (see above).
@@ -41,9 +41,9 @@ Rolling back code is safe when the release's migrations were additive (see above
 
 ```bash
 # The bookmark printed by the release job (artifact: d1-bookmark-vX.Y.Z)
-pnpm exec wrangler d1 time-travel restore sythix-db --env production --bookmark <bookmark>
+pnpm exec wrangler d1 time-travel restore sythix-db --bookmark <bookmark>
 # or to a timestamp
-pnpm exec wrangler d1 time-travel restore sythix-db --env production --timestamp <unix-seconds>
+pnpm exec wrangler d1 time-travel restore sythix-db --timestamp <unix-seconds>
 ```
 
 Then roll the Worker back to the matching version. Announce the data-loss window to users.
@@ -53,7 +53,7 @@ Then roll the Worker back to the matching version. Announce the data-loss window
 | Data | Mechanism | Retention |
 |---|---|---|
 | D1 | Time Travel (point-in-time restore) — automatic | 30 days on Workers Paid, 7 days on Free (check current limits) |
-| D1 (long-term) | `wrangler d1 export sythix-db --env production --remote --output backup-YYYYMMDD.sql` on a schedule, stored outside Cloudflare | your policy |
+| D1 (long-term) | `wrangler d1 export sythix-db --remote --output backup-YYYYMMDD.sql` on a schedule, stored outside Cloudflare | your policy |
 | R2 (assets, exports) | Enable bucket object versioning or periodic `rclone sync` to a second bucket/provider | your policy |
 | Server configs | The agent backs up every plugin config before writing (`.sythix-backups/<timestamp>/` on the host) and before every datapack replacement | until removed on the host |
 

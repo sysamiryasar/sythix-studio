@@ -36,11 +36,13 @@ export async function sendEmail(ctx: AppContext, msg: EmailMessage): Promise<{ d
       log("error", "email.send_failed", { provider, err });
     }
   } else if (ctx.env.APP_ENV === "production") {
-    log("error", "email.no_provider", { subject: msg.subject });
+    log("warn", "email.no_provider", { subject: msg.subject });
   }
 
-  // Store bodies only outside production: they contain single-use links.
-  const body = ctx.env.APP_ENV === "production" ? "[redacted]" : msg.text;
+  // Bodies contain single-use links. Once a provider delivered the message there is
+  // no reason to keep it in production; undelivered messages are kept so a platform
+  // owner can act on them (Studio → Users).
+  const body = ctx.env.APP_ENV === "production" && status === "sent" ? "[redacted]" : msg.text;
   await run(
     ctx.db,
     `INSERT INTO email_outbox (id, to_email, subject, body_text, provider, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -53,4 +55,8 @@ export async function sendEmail(ctx: AppContext, msg: EmailMessage): Promise<{ d
     ctx.now(),
   );
   return { delivered: status === "sent" };
+}
+
+export function emailConfigured(env: CloudflareEnv): boolean {
+  return !!env.RESEND_API_KEY;
 }

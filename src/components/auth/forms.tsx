@@ -103,9 +103,25 @@ export function RegisterForm({ turnstileSiteKey }: { turnstileSiteKey: string | 
   const [form, setForm] = useState({ email: "", username: "", password: "" });
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
   const { errors, formError, capture, reset } = useFieldErrors();
   const onToken = useCallback((t: string | null) => setToken(t), []);
+  if (done === "first_owner_ready")
+    return (
+      <FormSuccess title={"You're the platform owner"}>
+        This is the first account on this installation, so it&apos;s verified and has full admin rights.{" "}
+        <Link className="text-accent hover:underline" href="/login">
+          Sign in
+        </Link>
+        .
+      </FormSuccess>
+    );
+  if (done === "awaiting_admin_verification")
+    return (
+      <FormSuccess title="Account created">
+        Email isn&apos;t set up on this installation yet, so an administrator needs to verify your account before you can sign in.
+      </FormSuccess>
+    );
   if (done)
     return (
       <FormSuccess title="Check your inbox">
@@ -124,8 +140,8 @@ export function RegisterForm({ turnstileSiteKey }: { turnstileSiteKey: string | 
         reset();
         setLoading(true);
         try {
-          await api("/api/v1/auth/register", { body: { ...form, turnstileToken: token ?? undefined } });
-          setDone(true);
+          const r = await api<{ status: string }>("/api/v1/auth/register", { body: { ...form, turnstileToken: token ?? undefined } });
+          setDone(r.status);
         } catch (err) {
           capture(err);
         } finally {

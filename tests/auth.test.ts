@@ -64,7 +64,8 @@ describe("registration and login", () => {
   it("does not reveal existing emails at registration", async () => {
     await createUser(app, "taken");
     const res = await register(app.ctx, { email: "taken@example.com", username: "other_name", password: "correct horse battery" });
-    expect(res.status).toBe("verification_sent");
+    // Same answer as for a new address (no email provider is configured in tests).
+    expect(res.status).toBe("awaiting_admin_verification");
     expect(await one(app.ctx.db, `SELECT 1 FROM users WHERE username = 'other_name'`)).toBeNull();
   });
 

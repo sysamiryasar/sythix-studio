@@ -28,7 +28,7 @@ export function linkingConfigured(env: CloudflareEnv): boolean {
 }
 
 function redirectUri(ctx: AppContext) {
-  return new URL("/api/v1/nexus/minecraft/callback", ctx.env.APP_URL).toString();
+  return new URL("/api/v1/nexus/minecraft/callback", ctx.env.APP_URL ?? "http://localhost:3000").toString();
 }
 
 export async function startLink(ctx: AppContext, userId: string): Promise<string> {

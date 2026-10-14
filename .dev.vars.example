@@ -1,4 +1,8 @@
-# Copy to .dev.vars for local development. NEVER commit .dev.vars.
+# Copy to .dev.vars for local development (pnpm dev does this automatically). NEVER commit .dev.vars.
+
+# wrangler.jsonc is configured for production; local development overrides it here.
+APP_ENV=development
+APP_URL=http://localhost:3000
 # Production values are set with `wrangler secret put <NAME> --env production`.
 
 # Cloudflare Turnstile. These are Cloudflare's official always-pass TEST keys.

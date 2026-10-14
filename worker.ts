@@ -4,6 +4,7 @@
 import { default as openNext } from "./.open-next/worker.js";
 import type { AppContext } from "./src/lib/context";
 import { runScheduledMaintenance } from "./src/modules/serveros/sweep";
+import { ensureMigrated } from "./src/lib/db/migrate";
 
 export default {
   fetch: openNext.fetch,
@@ -17,6 +18,6 @@ export default {
       userAgent: "cron",
       waitUntil: (p) => ctx.waitUntil(p),
     };
-    ctx.waitUntil(runScheduledMaintenance(appCtx));
+    ctx.waitUntil(ensureMigrated(env).then(() => runScheduledMaintenance(appCtx)));
   },
 } satisfies ExportedHandler<CloudflareEnv>;

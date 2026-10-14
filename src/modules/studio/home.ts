@@ -17,6 +17,10 @@ export async function loadHome(ctx: AppContext, user: SessionUser, workspaceId: 
   const states = await getModuleStates(ctx);
   const on = (id: string) => states.find((s) => s.manifest.id === id)?.available ?? false;
   const tasks: PendingTask[] = [];
+  if (user.platformRole === "platform_owner") {
+    const pendingUsers = await one<{ n: number }>(ctx.db, `SELECT COUNT(*) AS n FROM users WHERE email_verified_at IS NULL`);
+    if (pendingUsers?.n) tasks.push({ title: `${pendingUsers.n} account${pendingUsers.n > 1 ? "s" : ""} awaiting verification`, detail: "No email provider is configured; verify them in Users.", href: "/studio/users", tone: "warning" });
+  }
   if (!user.emailVerified) tasks.push({ title: "Verify your email", detail: "Required for servers, teams and friend requests.", href: "/settings", tone: "warning" });
 
   const projects = on("forgeos")

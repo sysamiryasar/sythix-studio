@@ -1,4 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { ensureMigrated } from "./db/migrate";
 
 /** Everything a service needs. Services never reach for globals; they take this. */
 export interface AppContext {
@@ -22,7 +23,9 @@ export function setContextFactoryForTests(factory: ContextFactory | null): void 
 
 export async function getAppContext(req?: Request): Promise<AppContext> {
   if (override) return override(req);
-  const { env, ctx } = await getCloudflareContext({ async: true });
+  const { env: rawEnv, ctx } = await getCloudflareContext({ async: true });
+  await ensureMigrated(rawEnv);
+  const env = withAppUrl(rawEnv, req);
   return {
     db: env.DB,
     bucket: env.ASSETS_BUCKET,
@@ -32,6 +35,18 @@ export async function getAppContext(req?: Request): Promise<AppContext> {
     userAgent: req?.headers.get("user-agent")?.slice(0, 300) ?? null,
     waitUntil: (p) => ctx.waitUntil(p),
   };
+}
+
+/**
+ * APP_URL is optional: when unset, the public origin is taken from the request
+ * (the Host header the browser used). Without a request it stays undefined.
+ */
+export function withAppUrl(env: CloudflareEnv, req?: Request): CloudflareEnv {
+  if (env.APP_URL || !req) return env;
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
+  if (!host) return env;
+  const proto = req.headers.get("x-forwarded-proto") ?? (/^(localhost|127\.0\.0\.1)(:\d+)?$/.test(host) ? "http" : "https");
+  return { ...env, APP_URL: `${proto}://${host}` };
 }
 
 export function isProduction(env: CloudflareEnv): boolean {
