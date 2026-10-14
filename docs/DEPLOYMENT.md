@@ -1,78 +1,112 @@
 # Deploying to Cloudflare
 
-Everything below uses Wrangler and works on the Workers **Free** plan for evaluation (see limits).
-Nothing deploys automatically from `main`; production goes through the tagged release workflow
-([RELEASING.md](RELEASING.md)).
+There are two supported paths:
 
-## 1. Prerequisites
+- **A. Cloudflare dashboard (Workers Builds).** Connect the GitHub repo and click Deploy. No
+  CLI, no IDs to copy. Cloudflare redeploys on every push to `main`. Best for getting started.
+- **B. Tagged releases from GitHub Actions** (`release.yml`): staging first, then production
+  after a required reviewer approves. See [RELEASING.md](RELEASING.md). Use one path or the
+  other for production, not both.
 
-- A Cloudflare account and `pnpm exec wrangler login` (or an API token, below).
-- A GitHub repository with Actions enabled.
+Both work on the Workers **Free** plan for evaluation (see the limits below).
 
-## 2. Create resources (once per environment)
+## A. Deploy from the Cloudflare dashboard
+
+1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Import a repository** → pick
+   this repository.
+2. Keep the defaults Cloudflare suggests:
+   - **Build command:** `pnpm run build`
+   - **Deploy command:** `npx wrangler deploy`
+   - Production branch: `main` (also make `main` the repository's default branch on GitHub).
+3. Click **Deploy**.
+
+What happens on the first deploy, with nothing created by hand:
+
+- Wrangler **creates** the D1 database `sythix-db` and the R2 bucket `sythix-assets`, because
+  `wrangler.jsonc` names them without IDs. R2 must be enabled on the account once (Dashboard →
+  R2; Cloudflare may ask for a payment method even on the free tier). If it isn't, the deploy
+  fails with an R2 error. Enable it and retry.
+- On the first request the Worker **applies the D1 migrations itself**, recording them in the
+  same `d1_migrations` table Wrangler uses, so `wrangler d1 migrations apply` stays compatible.
+  Set the var `AUTO_MIGRATE=off` to turn this off and migrate only from CI.
+- `APP_URL` is taken from the request's host (e.g. `https://sythix-studio.<you>.workers.dev`).
+  Set it explicitly once you use a custom domain.
+
+Then open the site and **register**. With no email provider configured, the **first account
+becomes the platform owner** and is verified immediately. Later accounts show as unverified
+in **Studio → Users**, where the owner can verify them (or configure email, below). To pin
+ownership to a specific address instead, set `PLATFORM_OWNER_EMAILS` before anyone registers.
+
+Optional, any time later (Worker → **Settings → Variables and Secrets**). **Studio → Modules →
+Installation setup** shows which of these are still missing:
+
+| Add | Why |
+|---|---|
+| `TURNSTILE_SECRET_KEY` (secret) + `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (text) | Bot protection on sign-up and reset. Without them those forms are only rate limited |
+| `RESEND_API_KEY` (secret) + `EMAIL_FROM` | Real verification and password-reset emails |
+| `MS_CLIENT_ID` + `MS_CLIENT_SECRET` | Minecraft account linking ([MINECRAFT-LINKING.md](MINECRAFT-LINKING.md)) |
+
+## B. CLI and GitHub Actions
+
+### Resources
+
+Production resources are created automatically by the first `wrangler deploy` (as above). For
+the optional staging environment, the first `wrangler deploy --env staging` creates
+`sythix-db-staging` and `sythix-assets-staging` the same way. Migrations by name:
 
 ```bash
-# Staging
-pnpm exec wrangler d1 create sythix-db-staging
-pnpm exec wrangler r2 bucket create sythix-assets-staging
-# Production
-pnpm exec wrangler d1 create sythix-db
-pnpm exec wrangler r2 bucket create sythix-assets
+pnpm db:migrate:production   # wrangler d1 migrations apply sythix-db --remote
+pnpm db:migrate:staging      # ... sythix-db-staging --remote --env staging
 ```
 
-Copy each printed `database_id` into `wrangler.jsonc` (`env.staging` / `env.production`), and set
-`APP_URL` for each environment to its public URL. Bindings are not inherited between
-environments, which is why each block declares its own D1, R2, vars and cron.
-
-## 3. Secrets
-
-Set secrets with Wrangler; never commit them. `.dev.vars` (git-ignored) holds local values.
+### Manual deploy
 
 ```bash
-pnpm exec wrangler secret put TURNSTILE_SECRET_KEY --env production
-pnpm exec wrangler secret put PLATFORM_OWNER_EMAILS --env production
-pnpm exec wrangler secret put RESEND_API_KEY --env production     # optional
-pnpm exec wrangler secret put MS_CLIENT_SECRET --env production   # optional
+pnpm exec wrangler login
+pnpm run build               # OpenNext build
+pnpm exec wrangler deploy    # production; add --env staging for staging
+curl https://<host>/api/health
+```
+
+### Secrets
+
+Set secrets with Wrangler or the dashboard; never commit them. `.dev.vars` (git-ignored) holds local values.
+
+```bash
+pnpm exec wrangler secret put TURNSTILE_SECRET_KEY
+pnpm exec wrangler secret put PLATFORM_OWNER_EMAILS
+pnpm exec wrangler secret put RESEND_API_KEY     # optional
+pnpm exec wrangler secret put MS_CLIENT_SECRET   # optional
 ```
 
 ### Environment variables
 
 | Name | Kind | Required | Purpose |
 |---|---|---|---|
-| `APP_ENV` | var | yes | `development` \| `staging` \| `production`; controls cookie names, dev outbox, strictness |
-| `APP_URL` | var | yes | Public origin; used in emails, OAuth redirect URI, agent instructions, CSRF allowlist |
-| `TURNSTILE_SECRET_KEY` | secret | production | Turnstile server key. Missing in production = registration/reset refused |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | var | production | Turnstile site key (read at runtime, safe to expose) |
-| `PLATFORM_OWNER_EMAILS` | secret | recommended | Comma-separated emails promoted to `platform_owner` once verified |
-| `RESEND_API_KEY`, `EMAIL_FROM` | secret / var | for real email | Without them, production emails are **not delivered** (logged as an error) |
+| `APP_ENV` | var | set in `wrangler.jsonc` | `development` \| `staging` \| `production`; controls cookie names, dev outbox, strictness |
+| `APP_URL` | var | optional | Public origin for emails, OAuth redirect URI, agent instructions, CSRF allowlist. Defaults to the request host |
+| `AUTO_MIGRATE` | var | optional | `off` stops the Worker from applying D1 migrations itself |
+| `TURNSTILE_SECRET_KEY` | secret | recommended | Turnstile server key. Without it, sign-up and reset are protected only by rate limits (a warning is logged) |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | var | with the secret | Turnstile site key (read at runtime, safe to expose) |
+| `PLATFORM_OWNER_EMAILS` | secret | optional | Comma-separated emails promoted to `platform_owner` once verified. If unset and no email provider exists, the first account becomes owner |
+| `RESEND_API_KEY`, `EMAIL_FROM` | secret / var | for real email | Without them, emails are **not delivered**. Messages stay in `email_outbox`, and the platform owner verifies accounts in Studio → Users |
 | `MS_CLIENT_ID`, `MS_CLIENT_SECRET` | var / secret | optional | Minecraft linking ([MINECRAFT-LINKING.md](MINECRAFT-LINKING.md)) |
 | `RELEASES_REPO` | var | optional | `owner/repo` checked for newer GitHub releases on the Updates page |
 | `DEPLOYMENT_LABEL` | var | optional | Free-form label shown on the Updates page |
 
 Bindings: `DB` (D1), `ASSETS_BUCKET` (R2), `ASSETS` (static assets), `WORKER_SELF_REFERENCE`.
 
-## 4. Turnstile
+### Turnstile
 
 Create a widget in the Cloudflare dashboard for your hostname; set the site key as a var and the
 secret as a secret. Local development uses Cloudflare's official always-pass test keys from
 `.dev.vars.example`.
 
-## 5. First deploy (manual, staging)
-
-```bash
-pnpm db:migrate:staging
-pnpm exec opennextjs-cloudflare build
-pnpm exec opennextjs-cloudflare deploy --env staging
-curl https://<staging-host>/api/health
-```
-
-Register with an address listed in `PLATFORM_OWNER_EMAILS`, verify it, and you are the platform
-owner.
-
-## 6. GitHub Actions
+### GitHub Actions
 
 Create GitHub **environments** `preview`, `staging` and `production` with secrets
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Add **required reviewers** to `production`.
+This is only needed for path B; path A uses Cloudflare's own build system.
 
 Least-privilege API token (Account → API Tokens → Custom):
 `Workers Scripts: Edit`, `D1: Edit`, `Workers R2 Storage: Edit` (only if the workflow manages

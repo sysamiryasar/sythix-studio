@@ -6,7 +6,10 @@ interface CloudflareEnv {
   DB: D1Database;
   ASSETS_BUCKET: R2Bucket;
   APP_ENV: "development" | "staging" | "production" | "test";
-  APP_URL: string;
+  /** Public origin. Optional: derived from the request host when unset. */
+  APP_URL?: string;
+  /** Set to "off" to disable automatic D1 migrations on startup. */
+  AUTO_MIGRATE?: string;
   TURNSTILE_SECRET_KEY?: string;
   NEXT_PUBLIC_TURNSTILE_SITE_KEY?: string;
   PLATFORM_OWNER_EMAILS?: string;

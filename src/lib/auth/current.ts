@@ -1,12 +1,17 @@
 import "server-only";
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAppContext, type AppContext } from "../context";
 import { resolveSession, sessionCookieName, type SessionUser } from "./session";
 
 /** Per-request app context for Server Components. */
-export const getServerContext = cache(async (): Promise<AppContext> => getAppContext());
+export const getServerContext = cache(async (): Promise<AppContext> => {
+  // Give the context the incoming request's headers (host for APP_URL, client IP, user agent).
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost";
+  return getAppContext(new Request(`https://${host}/`, { headers: new Headers(h) }));
+});
 
 /** The signed-in user for this request, or null. Deduplicated per request. */
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {

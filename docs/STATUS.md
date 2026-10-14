@@ -9,7 +9,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, needs external setup or 
 | 1 | Application builds | ✅ | `next build` and `opennextjs-cloudflare build` succeed; `wrangler deploy --dry-run` bundles `worker.ts` (CI steps) |
 | 2 | Authentication works | ✅ | `tests/auth.test.ts` (16); manual HTTP run in `workerd`: register → verify → login → session-protected SSR |
 | 3 | Protected routes enforce permissions | ✅ | `tests/authz.test.ts`, per-module authz tests in `nexusid`, `forgeos`, `serveros`, `ecosystem` suites; unauthenticated `/` redirects to `/login` (verified in workerd) |
-| 4 | Migrations run correctly | ✅ | All 6 migrations apply to a fresh local D1 (CI step) and run in every test via `tests/helpers/d1.ts` |
+| 4 | Migrations run correctly | ✅ | All 6 migrations apply to a fresh local D1 (CI step) and run in every test via `tests/helpers/d1.ts`; the Worker's runtime migrator is tested in `tests/setup.test.ts` and was verified in local workerd against an empty D1 |
 | 5 | NexusID profiles can be created and updated | ✅ | Provisioned on registration; `tests/nexusid.test.ts` (11) |
 | 6 | ForgeOS projects saved, validated, exported | ✅ | `tests/forgeos.test.ts` (17) incl. per-version output assertions and byte-determinism |
 | 7 | ServerOS registers servers and reports connection status | ✅ | `tests/serveros.test.ts` (10); real agent process ↔ workerd over HTTP verified manually |
@@ -18,8 +18,8 @@ Legend: ✅ implemented and tested · 🟡 implemented, needs external setup or 
 | 10 | ForgeOS exports connect to a deployment workflow | ✅ | `tests/ecosystem.test.ts`: plan → typed confirm → agent downloads, verifies hash, installs, reports |
 | 11 | Module registry is extensible | ✅ | Registry validation + runtime gating tests (`tests/modules.test.ts`, 6); [MODULES.md](MODULES.md) |
 | 12 | Useful success/error messages | ✅ | Uniform error JSON with field-level validation details; toasts; validation reports; deployment checks |
-| 13 | Tests cover authorization, export and integration paths | ✅ | 81 tests across 9 suites |
-| 14 | Reproducible Cloudflare deployment instructions | 🟡 | [DEPLOYMENT.md](DEPLOYMENT.md) and the release workflow; **not yet executed against a real Cloudflare account** from this repository (no account credentials were available) |
+| 13 | Tests cover authorization, export and integration paths | ✅ | 87 tests across 10 suites |
+| 14 | Reproducible Cloudflare deployment instructions | 🟡 | [DEPLOYMENT.md](DEPLOYMENT.md): dashboard import with default settings, or the release workflow. **Not yet executed against a real Cloudflare account** from this repository (no account credentials were available). D1/R2 auto-creation relies on Wrangler's resource provisioning |
 | 15 | No production secrets committed | ✅ | Only Cloudflare's public Turnstile test keys in `.dev.vars.example`; `.dev.vars`, agent configs and seed SQL are git-ignored; CI secret scan |
 | 16 | Docs separate implemented vs planned | ✅ | This file |
 
@@ -44,7 +44,7 @@ Legend: ✅ implemented and tested · 🟡 implemented, needs external setup or 
 - ✅ Cosmetic inventory, loadout with ownership checks, unlocks via achievements
 - 🟡 Cosmetic assets are **placeholders** rendered procedurally and labelled; they exist only on the website, never in vanilla Minecraft
 - 🟡 Minecraft Java linking: full Microsoft → Xbox → XSTS → Minecraft chain implemented and tested with mocks; requires an approved Azure app ([MINECRAFT-LINKING.md](MINECRAFT-LINKING.md))
-- 🟡 Email delivery requires `RESEND_API_KEY`; otherwise development uses `/dev/outbox` and production logs an error
+- 🟡 Email delivery requires `RESEND_API_KEY`. Otherwise development uses `/dev/outbox`, and in production the first account becomes the owner, who verifies later accounts in Studio → Users
 - 📋 Creator follow/feeds, team-owned workspaces
 
 ### ForgeOS

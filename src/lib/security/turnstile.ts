@@ -3,15 +3,13 @@ import { AppError } from "../errors";
 import { log } from "../logger";
 
 /**
- * Verifies a Cloudflare Turnstile token server-side.
- * When no secret is configured outside production, verification is skipped
- * (and logged) so local development works without Cloudflare credentials.
- * In production a missing secret is a hard failure.
+ * Verifies a Cloudflare Turnstile token server-side. Turnstile is optional:
+ * without TURNSTILE_SECRET_KEY verification is skipped (logged), rate limits
+ * still apply, and platform admins see a setup warning in Studio → Modules.
  */
 export async function verifyTurnstile(ctx: AppContext, token: string | undefined | null): Promise<void> {
   const secret = ctx.env.TURNSTILE_SECRET_KEY;
   if (!secret) {
-    if (ctx.env.APP_ENV === "production") throw new AppError("unavailable", "Abuse protection is not configured.");
     log("warn", "turnstile.skipped", { reason: "TURNSTILE_SECRET_KEY not set" });
     return;
   }

@@ -2,7 +2,9 @@ name: Release
 
 # Production deploys happen ONLY from a pushed semver tag (vX.Y.Z), after all
 # checks pass, and after a required reviewer approves the `production`
-# GitHub environment. Nothing deploys to production automatically from main.
+# GitHub environment. Nothing in this workflow deploys automatically from main.
+# (If you instead connected the repo with Cloudflare Workers Builds, Cloudflare
+# deploys every push to main itself; use one path or the other, not both.)
 on:
   push:
     tags: ["v*.*.*"]
@@ -70,7 +72,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm exec wrangler d1 time-travel info sythix-db --env production | tee d1-bookmark.txt
+        run: pnpm exec wrangler d1 time-travel info sythix-db | tee d1-bookmark.txt
       - uses: actions/upload-artifact@v4
         with:
           name: d1-bookmark-${{ github.ref_name }}
@@ -84,7 +86,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm cf:build && pnpm exec opennextjs-cloudflare deploy --env production
+        run: pnpm cf:build && pnpm exec opennextjs-cloudflare deploy
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

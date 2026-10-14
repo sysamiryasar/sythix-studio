@@ -12,7 +12,7 @@ export default async function AccessPage({ params }: { params: Promise<{ serverI
   return (
     <AccessView
       serverId={s.id}
-      appUrl={ctx.env.APP_URL}
+      appUrl={ctx.env.APP_URL ?? ""}
       members={await listServerMembers(ctx, user, serverId)}
       credentials={canCreds ? await listCredentials(ctx, user, serverId) : null}
       canManageMembers={serverCan(s.role, "server.members.manage")}

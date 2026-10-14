@@ -22,16 +22,25 @@ Why Next 15.5 and not 16: Next 16.x builds with the current OpenNext adapter but
 inside `workerd` during verification; 15.5.27 is inside OpenNext's supported range and passes the
 same end-to-end checks. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#runtime-decisions).
 
+## Deploy to Cloudflare (2 minutes)
+
+1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Import a repository** → this repo.
+2. Keep the defaults: build `pnpm run build`, deploy `npx wrangler deploy`. Click **Deploy**.
+3. Open the URL Cloudflare gives you and register. The first account becomes the platform owner.
+
+The D1 database and R2 bucket are created on deploy, and the app applies its own database
+migrations. R2 must be enabled on your Cloudflare account once. Email, Turnstile and Minecraft
+linking are optional extras. Details are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
 ## Quick start (local)
 
 Requirements: Node.js ≥ 22.12, pnpm 10.
 
 ```bash
 pnpm install
-cp .dev.vars.example .dev.vars          # Turnstile test keys, optional providers
 pnpm db:migrate:local                   # apply D1 migrations to the local database
 pnpm db:seed:local                      # optional demo data (owner@example.com / builder@example.com)
-pnpm dev                                # http://localhost:3000
+pnpm dev                                # creates .dev.vars from the example; http://localhost:3000
 ```
 
 Without an email provider, verification and reset emails are shown at

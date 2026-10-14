@@ -6,7 +6,7 @@ import { one, run } from "../db/sql";
 import { DUMMY_PASSWORD_HASH, hashPassword, randomToken, sha256Hex, verifyPassword } from "../security/crypto";
 import { enforceRateLimit, RATE_LIMITS } from "../security/rate-limit";
 import { verifyTurnstile } from "../security/turnstile";
-import { sendEmail } from "../email";
+import { emailConfigured, sendEmail } from "../email";
 import { recordAudit } from "../audit";
 import { notify } from "../notifications";
 import { displayNameSchema, emailSchema, passwordSchema, usernameSchema } from "../validation";
@@ -41,7 +41,7 @@ interface UserAuthRow {
 }
 
 function appUrl(ctx: AppContext, path: string): string {
-  return new URL(path, ctx.env.APP_URL).toString();
+  return new URL(path, ctx.env.APP_URL ?? "http://localhost:3000").toString();
 }
 
 async function issueToken(ctx: AppContext, userId: string, kind: "email_verify" | "password_reset", ttl: number): Promise<string> {
@@ -89,12 +89,24 @@ async function sendVerification(ctx: AppContext, user: { id: string; email: stri
   });
 }
 
+export type RegisterStatus =
+  /** A verification email was sent (or would be, for a duplicate email). */
+  | "verification_sent"
+  /** No email provider: the very first account was verified and made platform owner. */
+  | "first_owner_ready"
+  /** No email provider: a platform owner must verify the account (Studio → Users). */
+  | "awaiting_admin_verification";
+
 /**
  * Creates an account. Registration never signs the user in: the account must
- * be verified by email first. A duplicate email returns the same response as a
- * new registration (the existing owner is emailed instead) to avoid account enumeration.
+ * be verified first. A duplicate email returns the same response as a new
+ * registration (the existing owner is emailed instead) to avoid account enumeration.
+ *
+ * Without an email provider (a fresh deployment), the first account is
+ * verified immediately and becomes platform owner unless PLATFORM_OWNER_EMAILS
+ * names someone else; later accounts are verified by a platform owner.
  */
-export async function register(ctx: AppContext, raw: z.input<typeof registerInput>): Promise<{ status: "verification_sent" }> {
+export async function register(ctx: AppContext, raw: z.input<typeof registerInput>): Promise<{ status: RegisterStatus }> {
   const input = registerInput.parse(raw);
   await enforceRateLimit(ctx, RATE_LIMITS.register, ctx.ip ?? "unknown");
   await verifyTurnstile(ctx, input.turnstileToken);
@@ -111,7 +123,7 @@ export async function register(ctx: AppContext, raw: z.input<typeof registerInpu
       subject: "SythiX Studio sign-up attempt",
       text: `Someone tried to create a SythiX Studio account with this email address, but you already have one.\n\nSign in: ${appUrl(ctx, "/login")}\nForgot your password? ${appUrl(ctx, "/forgot-password")}`,
     });
-    return { status: "verification_sent" };
+    return { status: emailConfigured(ctx.env) ? "verification_sent" : "awaiting_admin_verification" };
   }
   if (await one(ctx.db, `SELECT 1 FROM users WHERE username = ?`, input.username)) {
     throw conflict("That username is already taken.");
@@ -120,6 +132,11 @@ export async function register(ctx: AppContext, raw: z.input<typeof registerInpu
   const id = newId("usr");
   const now = ctx.now();
   const passwordHash = await hashPassword(input.password);
+  const owners = ownerEmails(ctx.env);
+  const bootstrapOwner =
+    !emailConfigured(ctx.env) &&
+    !(await one(ctx.db, `SELECT 1 FROM users LIMIT 1`)) &&
+    (owners.size === 0 || owners.has(input.email));
   await ctx.db.batch([
     ctx.db
       .prepare(`INSERT INTO users (id, email, password_hash, username, display_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`)
@@ -127,8 +144,14 @@ export async function register(ctx: AppContext, raw: z.input<typeof registerInpu
     ...(await provisioningStatements(ctx, { id, username: input.username })),
   ]);
   await recordAudit(ctx, { actorId: id, action: "account.registered", targetType: "user", targetId: id });
+  if (bootstrapOwner) {
+    await run(ctx.db, `UPDATE users SET email_verified_at = ?, platform_role = 'platform_owner' WHERE id = ?`, now, id);
+    await recordAudit(ctx, { actorType: "system", actorId: null, action: "platform.owner_bootstrapped", targetType: "user", targetId: id });
+    await awardAchievement(ctx, id, "welcome");
+    return { status: "first_owner_ready" };
+  }
   await sendVerification(ctx, { id, email: input.email });
-  return { status: "verification_sent" };
+  return { status: emailConfigured(ctx.env) ? "verification_sent" : "awaiting_admin_verification" };
 }
 
 export async function resendVerification(ctx: AppContext, email: string): Promise<void> {
@@ -229,4 +252,15 @@ export async function changePassword(
   const revoked = await revokeAllSessions(ctx, user.id, user.sessionId);
   await recordAudit(ctx, { actorId: user.id, action: "account.password_changed", targetType: "user", targetId: user.id, metadata: { sessionsRevoked: revoked } });
   await notify(ctx, user.id, { kind: "security.event", title: "Your password was changed", body: "Other sessions were signed out.", link: "/settings/security" });
+}
+
+/** Platform owner action: mark an account's email as verified (used when no email provider is configured). */
+export async function adminVerifyUser(ctx: AppContext, actorId: string, userId: string): Promise<void> {
+  const u = await one<{ email: string; email_verified_at: number | null }>(ctx.db, `SELECT email, email_verified_at FROM users WHERE id = ?`, userId);
+  if (!u) throw new AppError("not_found", "User not found.");
+  if (u.email_verified_at) return;
+  await run(ctx.db, `UPDATE users SET email_verified_at = ?, updated_at = ? WHERE id = ?`, ctx.now(), ctx.now(), userId);
+  await run(ctx.db, `UPDATE auth_tokens SET used_at = ? WHERE user_id = ? AND kind = 'email_verify' AND used_at IS NULL`, ctx.now(), userId);
+  await recordAudit(ctx, { actorId, action: "account.verified_by_admin", targetType: "user", targetId: userId });
+  await awardAchievement(ctx, userId, "welcome");
 }

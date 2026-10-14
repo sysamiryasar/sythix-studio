@@ -25,6 +25,9 @@ export function createTestApp(envOverrides: Partial<CloudflareEnv> = {}): TestAp
     APP_URL: "http://localhost:3000",
     DB: db,
     ASSETS_BUCKET: bucket,
+    // Naming an owner that never registers disables first-account bootstrap,
+    // so ordinary tests get ordinary members. Bootstrap has its own tests.
+    PLATFORM_OWNER_EMAILS: "owner@example.invalid",
     ...envOverrides,
   } as unknown as CloudflareEnv;
   const make = (req?: Request): AppContext => ({
@@ -50,15 +53,17 @@ export async function createUser(app: TestApp, name?: string): Promise<{ user: S
   const username = name ?? `player${counter}`;
   const email = `${username.toLowerCase()}@example.com`;
   const password = "correct horse battery staple";
-  await register(app.ctx, { email, username, password });
-  const tokenRow = await one<{ body_text: string }>(
-    app.ctx.db,
-    `SELECT body_text FROM email_outbox WHERE to_email = ? ORDER BY created_at DESC LIMIT 1`,
-    email,
-  );
-  const verifyToken = /token=([A-Za-z0-9_-]+)/.exec(tokenRow?.body_text ?? "")?.[1];
-  if (!verifyToken) throw new Error("verification email not found");
-  await verifyEmail(app.ctx, verifyToken);
+  const { status } = await register(app.ctx, { email, username, password });
+  if (status !== "first_owner_ready") {
+    const tokenRow = await one<{ body_text: string }>(
+      app.ctx.db,
+      `SELECT body_text FROM email_outbox WHERE to_email = ? ORDER BY created_at DESC LIMIT 1`,
+      email,
+    );
+    const verifyToken = /token=([A-Za-z0-9_-]+)/.exec(tokenRow?.body_text ?? "")?.[1];
+    if (!verifyToken) throw new Error("verification email not found");
+    await verifyEmail(app.ctx, verifyToken);
+  }
   const { token } = await login(app.ctx, { email, password });
   const user = await resolveSession(app.ctx, token);
   if (!user) throw new Error("session did not resolve");
