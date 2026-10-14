@@ -1,0 +1,61 @@
+// SythiX Studio — Cloudflare Workers configuration.
+// Bindings are NOT inherited by [env.*] blocks, so each environment declares its own.
+// Replace every database_id / bucket name marked REPLACE before deploying remotely
+// (see docs/DEPLOYMENT.md). Local development works with the placeholders as-is.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sythix-studio",
+  "main": "worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "sythix-studio" }],
+  "vars": {
+    "APP_ENV": "development",
+    "APP_URL": "http://localhost:3000"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sythix-db",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets-dev" }],
+  "triggers": { "crons": ["* * * * *"] },
+
+  "env": {
+    "staging": {
+      "name": "sythix-studio-staging",
+      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "sythix-studio-staging" }],
+      "vars": { "APP_ENV": "staging", "APP_URL": "https://sythix-studio-staging.REPLACE.workers.dev" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sythix-db-staging",
+          "database_id": "REPLACE-WITH-STAGING-D1-ID",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets-staging" }],
+      "triggers": { "crons": ["* * * * *"] }
+    },
+    "production": {
+      "name": "sythix-studio",
+      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "sythix-studio" }],
+      "vars": { "APP_ENV": "production", "APP_URL": "https://studio.REPLACE.example" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "sythix-db",
+          "database_id": "REPLACE-WITH-PRODUCTION-D1-ID",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets" }],
+      "triggers": { "crons": ["* * * * *"] }
+    }
+  }
+}

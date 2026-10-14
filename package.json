@@ -1,0 +1,61 @@
+{
+  "name": "sythix-studio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SythiX Studio — the all-in-one Minecraft center (NexusID, ServerOS, ForgeOS).",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "node scripts/gen-release-info.mjs && next dev",
+    "build": "node scripts/gen-release-info.mjs && next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "node scripts/gen-release-info.mjs && tsc --noEmit && tsc --noEmit -p agent",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "cf:build": "node scripts/gen-release-info.mjs && opennextjs-cloudflare build",
+    "cf:preview": "pnpm cf:build && opennextjs-cloudflare preview",
+    "cf:upload": "pnpm cf:build && opennextjs-cloudflare upload",
+    "cf:deploy": "pnpm cf:build && opennextjs-cloudflare deploy",
+    "cf:typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "db:migrate:local": "wrangler d1 migrations apply sythix-db --local",
+    "db:migrate:staging": "wrangler d1 migrations apply sythix-db --remote --env staging",
+    "db:migrate:production": "wrangler d1 migrations apply sythix-db --remote --env production",
+    "db:seed:local": "node scripts/seed-dev.mjs && wrangler d1 execute sythix-db --local --file=seed/dev-seed.sql",
+    "agent:build": "pnpm --dir agent build",
+    "agent:test": "vitest run agent"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "1.20.10",
+    "fflate": "0.8.3",
+    "lucide-react": "1.55.0",
+    "next": "15.5.27",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "semver": "7.8.5",
+    "server-only": "0.0.1",
+    "three": "0.186.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261013.1",
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/semver": "^7.7.0",
+    "@types/three": "^0.186.0",
+    "eslint": "9.39.5",
+    "eslint-config-next": "15.5.27",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11",
+    "wrangler": "4.149.0"
+  }
+}
