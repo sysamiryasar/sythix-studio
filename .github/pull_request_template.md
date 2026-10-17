@@ -4,10 +4,10 @@
 
 ## Testing
 - [ ] `pnpm check`
-- [ ] `pnpm cf:preview` (if routing, bindings or the Worker entry changed)
+- [ ] `pnpm test:e2e` against a fresh `pnpm preview` (UI or realtime changes)
 
 ## Checklist
-- [ ] Authorization enforced in services, with tests
-- [ ] Migrations are new files and backwards compatible
-- [ ] `CHANGELOG.md` and `docs/STATUS.md` updated
-- [ ] UI labels sample/placeholder/unavailable data honestly
+- [ ] Authorization enforced server-side, with tests
+- [ ] New migrations are additive
+- [ ] `CHANGELOG.md`, `src/shared/changelog.ts` and `docs/STATUS.md` updated
+- [ ] Unavailable features are labelled honestly (no simulated results)

@@ -1,102 +1,63 @@
-# SythiX Studio
+# SythiX Unite
 
-**The all-in-one Minecraft center.** One account and one application for player identity, server
-operations and content creation, built as a modular platform on Cloudflare.
+**Everything. Everyone. United.** · *One identity. One platform. Infinite possibilities.*
 
-| Module | What it does today |
+SythiX Unite is the all-in-one platform of the SythiX ecosystem. It brings social networking, communities with real-time chat, and, over time, Minecraft discovery, server management, creator tools, gaming and AI together under one SythiX ID.
+
+> **Honest status.** This is version 0.1.0. SythiX ID, the Unite shell, SythiX Social and SythiX Connect (text and real-time) work and are tested. Voice/video, Minecraft Database, Server Hosting, Studio, Gaming, AI, Worlds and Extensions are **not built yet**. The app shows them as roadmap entries and never fakes them. See [docs/STATUS.md](docs/STATUS.md).
+
+## What works today
+
+| Area | Features |
 |---|---|
-| **NexusID** | Accounts, profiles with server-enforced privacy, friends, blocks, reports, teams, event-driven achievements, a cosmetic inventory (placeholder art, website-only), Minecraft Java account linking via Microsoft sign-in (requires an approved Azure app). |
-| **ForgeOS** | Projects with folders and revisions; an item editor (attributes, enchantments, durability, lore, food, recipes, textures, JSON models); ability and equipment-set authoring; byte-level asset validation; version-aware **datapack** and **resource pack** export for Java 1.20.6 / 1.21.1 / 1.21.4 / 1.21.5; a three.js viewport. |
-| **ServerOS** | Paper/Purpur server registration, a zero-dependency outbound **server agent**, live status and telemetry, console with authorized commands, kick/ban/unban, plugin inventory, sandboxed config editing with backups and restore, audit logs, per-server roles. |
-| **Studio** | Application shell, workspaces, scoped RBAC, global search and command palette, notifications, a module registry with health checks and feature flags, an updates page, and the ForgeOS → ServerOS deployment workflow. |
-
-What is implemented, what needs a plugin that doesn't exist yet, and what is planned is tracked
-honestly in **[docs/STATUS.md](docs/STATUS.md)**.
+| **SythiX ID** | Registration and sign-in (PBKDF2, hashed session tokens), profile with avatar, banner and accent, privacy (profile visibility, DM policy, mentions, activity), appearance (dark/light/system, reduced motion), sessions, password change, JSON data export, permanent account deletion. The first account becomes the platform owner. |
+| **Unite shell** | Collapsible navigation rail, breadcrumbs, the **Everything Command** palette (Ctrl/⌘+K: permission-aware search plus actions), live notification badge, customizable Home dashboard (show, hide and reorder widgets), responsive mobile layout. |
+| **SythiX Social** | Posts with up to 4 images or videos, public/followers/private visibility, Home/Following/Discover feeds with cursor pagination, follows, 5 reaction types, threaded comments, reposts, bookmarks, #hashtags and trending, @mentions, profile media gallery, search. |
+| **SythiX Connect** | Communities (public or invite-only), text, announcement and restricted channels, roles (owner/admin/moderator/member) with server-side permission checks, invites, kick/ban, direct and group messages. Real-time delivery, typing indicators and presence over WebSockets (Durable Objects). Edit, delete, pin, emoji reactions, reply, message search, unread state. |
+| **Safety** | Blocking (two-way content hiding), reports on users, posts, comments, messages and communities, a moderation queue, content hiding, account suspension, role management and an audit log. Rate limits on every write path, CSRF origin checks, cross-site WebSocket rejection, byte-level upload validation, CSP and security headers. |
 
 ## Stack
 
-Next.js 15.5 (App Router, React 19, TypeScript strict) · Tailwind CSS 4 · Cloudflare Workers via
-`@opennextjs/cloudflare` · D1 · R2 · Cron Triggers · Turnstile · Zod · three.js · Vitest.
+React 19 + TypeScript + Vite + Tailwind CSS 4 (client) · Hono on Cloudflare Workers (API) · D1 (database) · R2 (media) · Durable Objects with WebSocket Hibernation (real-time) · Vitest and Playwright (tests) · GitHub Actions (CI). One Worker serves the app and the API.
 
-Why Next 15.5 and not 16: Next 16.x builds with the current OpenNext adapter but failed at runtime
-inside `workerd` during verification; 15.5.27 is inside OpenNext's supported range and passes the
-same end-to-end checks. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#runtime-decisions).
+```
+src/
+  shared/    types, zod schemas, permissions, product areas, changelog (client + server)
+  worker/    Hono API: routes/, services/ (account, social, connect, media, moderation, search), realtime/ (Durable Object), lib/
+  client/    React app: pages/, components/ (shell, command palette, social, chat, ui), lib/ (api, realtime, session)
+migrations/  D1 schema (applied automatically on first request)
+tests/       Vitest integration tests: real SQL on node:sqlite, in-memory R2, fake realtime
+e2e/         Playwright browser test against real workerd
+docs/        architecture, deployment, status, security
+```
 
-## Deploy to Cloudflare (2 minutes)
+## Run it locally
 
-1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Import a repository** → this repo.
-2. Keep the defaults: build `pnpm run build`, deploy `npx wrangler deploy`. Click **Deploy**.
-3. Open the URL Cloudflare gives you and register. The first account becomes the platform owner.
-
-The D1 database and R2 bucket are created on deploy, and the app applies its own database
-migrations. R2 must be enabled on your Cloudflare account once. Email, Turnstile and Minecraft
-linking are optional extras. Details are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
-## Quick start (local)
-
-Requirements: Node.js ≥ 22.12, pnpm 10.
+Requirements: Node.js ≥ 22.12 and pnpm 10.
 
 ```bash
 pnpm install
-pnpm db:migrate:local                   # apply D1 migrations to the local database
-pnpm db:seed:local                      # optional demo data (owner@example.com / builder@example.com)
-pnpm dev                                # creates .dev.vars from the example; http://localhost:3000
+pnpm dev            # API (wrangler dev on :8787) + Vite (http://localhost:5173)
 ```
 
-Without an email provider, verification and reset emails are shown at
-<http://localhost:3000/dev/outbox> (development only). The seed prints the demo password.
-
-To run the real Workers runtime locally (recommended before every release):
+The local D1 database migrates itself on the first request. Register at http://localhost:5173/register; the first account becomes the platform owner.
 
 ```bash
-pnpm cf:preview                         # OpenNext build + wrangler dev on workerd
+pnpm check          # lint + typecheck + tests + production build
+pnpm preview        # build, then run the real Worker (workerd) at http://localhost:8787
+pnpm test:e2e       # browser test; needs `pnpm preview` running on a fresh local database
 ```
 
-### Try ServerOS without a Minecraft server
+## Deploy to Cloudflare
 
-Register a server, copy the credential, then start the agent in **simulated** mode. Everything it
-reports is labelled “Sample environment” in the UI and never counts as a real connection.
-
-```bash
-pnpm agent:build
-node agent/dist/agent.js init --api-url http://localhost:3000 --token <sxa_...> --simulated
-node agent/dist/agent.js run --config sythix-agent.json
-```
-
-For a real Paper/Purpur server see [docs/AGENT.md](docs/AGENT.md).
-
-## Scripts
-
-| Script | Purpose |
-|---|---|
-| `pnpm dev` | Next.js dev server with local D1/R2 bindings |
-| `pnpm lint` / `pnpm typecheck` / `pnpm test` | ESLint, `tsc` (app + agent), Vitest |
-| `pnpm check` | All three |
-| `pnpm cf:build` / `cf:preview` / `cf:upload` / `cf:deploy` | OpenNext build, local workerd preview, upload a version, deploy |
-| `pnpm db:migrate:local\|staging\|production` | Apply D1 migrations |
-| `pnpm db:seed:local` | Generate and load demo data (local only) |
-| `pnpm agent:build` | Build the server agent to `agent/dist` |
-
-## Repository layout
-
-```
-migrations/            D1 schema (numbered, append-only)
-src/app/               Routes: (auth), (studio) pages, api/v1 (browser), api/agent/v1 (agents)
-src/lib/               Context, auth, RBAC, security, HTTP wrappers, audit, notifications
-src/modules/           Module registry + studio, nexusid, forgeos, serveros, ecosystem services
-src/components/        UI primitives, shell, per-module components
-agent/                 @sythix/server-agent (Node, zero dependencies)
-worker.ts              Worker entry: OpenNext fetch + cron maintenance
-tests/, agent/test/    Vitest suites (real migrations on node:sqlite)
-docs/                  Architecture, API, deployment, security, releasing, status
-```
+Cloudflare dashboard → **Workers & Pages → Create → Import a repository** → this repository. Keep the defaults: build `pnpm run build`, deploy `npx wrangler deploy`. D1, R2 and the Durable Object are created on the first deploy. R2 must be enabled on the account once (see [FREE_TIER_AUDIT.md](FREE_TIER_AUDIT.md)). Full guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Documentation
 
-- [Architecture](docs/ARCHITECTURE.md) · [Module system](docs/MODULES.md) · [API](docs/API.md)
-- [Deployment & environment variables](docs/DEPLOYMENT.md) · [Releasing, rollback, backups](docs/RELEASING.md)
-- [Server agent](docs/AGENT.md) · [Minecraft account linking](docs/MINECRAFT-LINKING.md)
-- [Security architecture](docs/SECURITY-ARCHITECTURE.md) · [Security policy](SECURITY.md)
-- [Status: implemented vs planned](docs/STATUS.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
-
-SythiX Studio is not affiliated with Mojang Studios or Microsoft. Minecraft is a trademark of Mojang Synergies AB.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): system design, data model, permissions, real-time, product-area roadmap
+- [docs/STATUS.md](docs/STATUS.md): implemented vs. planned, with known limitations
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): deploying and environment variables
+- [SECURITY.md](SECURITY.md): security model and reporting
+- [FREE_TIER_AUDIT.md](FREE_TIER_AUDIT.md): every service, its free allowance and its limits
+- [MONTHLY_REVAMPS.md](MONTHLY_REVAMPS.md): release process and roadmap
+- [CHANGELOG.md](CHANGELOG.md)

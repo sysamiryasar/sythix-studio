@@ -1,8 +1,0 @@
-packages:
-  - "."
-  - "agent"
-onlyBuiltDependencies:
-  - esbuild
-  - workerd
-  - unrs-resolver
-  - sharp

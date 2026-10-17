@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+/* SythiX Unite design tokens — v1. Version bumps are recorded in MONTHLY_REVAMPS.md. */
+:root {
+  --sx-tokens-version: "1";
+  --bg: #07070c;
+  --surface: #0d0d15;
+  --surface-2: #14141f;
+  --surface-3: #1b1b29;
+  --border: #252536;
+  --border-strong: #35354c;
+  --fg: #eeedf7;
+  --muted: #a9a8be;
+  --faint: #8b8aa5;
+  --accent: #8b5cf6;
+  --accent-strong: #7c3aed;
+  --accent-fg: #ffffff;
+  --accent-soft: rgb(139 92 246 / 0.14);
+  --cyan: #22d3ee;
+  --magenta: #e879f9;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #fb7185;
+  --ring: #a78bfa;
+  --glow: 0 0 0 1px rgb(139 92 246 / 0.35), 0 10px 40px -12px rgb(139 92 246 / 0.45);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f6f6fb;
+  --surface: #ffffff;
+  --surface-2: #f0f0f7;
+  --surface-3: #e7e7f1;
+  --border: #dedeea;
+  --border-strong: #c9c9da;
+  --fg: #12121c;
+  --muted: #4a4a62;
+  --faint: #5f5f79;
+  --accent: #6d28d9;
+  --accent-strong: #6d28d9;
+  --accent-soft: rgb(109 40 217 / 0.1);
+  --cyan: #0e7490;
+  --magenta: #a21caf;
+  --success: #047857;
+  --warning: #b45309;
+  --danger: #be123c;
+  --ring: #6d28d9;
+  --glow: 0 0 0 1px rgb(109 40 217 / 0.25), 0 10px 30px -14px rgb(109 40 217 / 0.35);
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-cyan: var(--cyan);
+  --color-magenta: var(--magenta);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  /* Subtle aurora lighting behind everything. */
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(60rem 30rem at 85% -10%, rgb(139 92 246 / 0.12), transparent 60%),
+    radial-gradient(40rem 24rem at -10% 110%, rgb(34 211 238 / 0.07), transparent 60%);
+}
+:root[data-theme="light"] body::before {
+  opacity: 0.5;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.sx-glass {
+  background: color-mix(in oklab, var(--surface) 78%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+
+.sx-gradient-text {
+  background: linear-gradient(100deg, #c4b5fd, #8b5cf6 40%, #22d3ee);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.sx-banner-aurora { background: linear-gradient(120deg, #4c1d95, #7c3aed 40%, #0e7490); }
+.sx-banner-obsidian { background: linear-gradient(120deg, #0b0b12, #1e1b2e 60%, #312e81); }
+.sx-banner-nebula { background: radial-gradient(circle at 20% 30%, #c026d3, transparent 50%), radial-gradient(circle at 80% 70%, #0891b2, transparent 50%), #1e1b4b; }
+.sx-banner-grid {
+  background:
+    linear-gradient(rgb(139 92 246 / 0.25) 1px, transparent 1px) 0 0 / 22px 22px,
+    linear-gradient(90deg, rgb(139 92 246 / 0.25) 1px, transparent 1px) 0 0 / 22px 22px,
+    linear-gradient(120deg, #0f172a, #312e81);
+}
+
+.sx-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+@keyframes sx-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.sx-in { animation: sx-in 180ms ease-out both; }
+
+:root[data-motion="reduced"] *,
+:root[data-motion="reduced"] *::before {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}

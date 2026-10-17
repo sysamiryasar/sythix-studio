@@ -1,50 +1,33 @@
-// Minimal in-memory R2Bucket covering the operations SythiX uses.
-export function createTestR2(): R2Bucket & { objects: Map<string, { body: Uint8Array; contentType?: string; custom?: Record<string, string> }> } {
-  const objects = new Map<string, { body: Uint8Array; contentType?: string; custom?: Record<string, string> }>();
-  const toBytes = async (v: unknown): Promise<Uint8Array> => {
-    if (v instanceof Uint8Array) return v;
-    if (v instanceof ArrayBuffer) return new Uint8Array(v);
-    if (typeof v === "string") return new TextEncoder().encode(v);
-    if (v instanceof Blob) return new Uint8Array(await v.arrayBuffer());
-    throw new Error("Unsupported R2 body in test bucket");
-  };
-  const meta = (key: string, o: { body: Uint8Array; contentType?: string; custom?: Record<string, string> }) => ({
+// Minimal in-memory R2 bucket for tests.
+export function createR2() {
+  const store = new Map<string, { bytes: Uint8Array; contentType?: string }>();
+  const obj = (key: string, bytes: Uint8Array, contentType?: string) => ({
     key,
-    size: o.body.byteLength,
-    httpMetadata: { contentType: o.contentType },
-    customMetadata: o.custom ?? {},
-    etag: key,
-    uploaded: new Date(0),
+    size: bytes.byteLength,
+    httpMetadata: { contentType },
+    body: new Blob([bytes as unknown as ArrayBuffer]).stream(),
+    arrayBuffer: async () => bytes.slice().buffer,
   });
   const bucket = {
-    objects,
-    async put(key: string, value: unknown, opts?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> }) {
-      const o = { body: await toBytes(value), contentType: opts?.httpMetadata?.contentType, custom: opts?.customMetadata };
-      objects.set(key, o);
-      return meta(key, o);
+    store,
+    async put(key: string, value: Uint8Array | ArrayBuffer, opts?: { httpMetadata?: { contentType?: string } }) {
+      const bytes = value instanceof Uint8Array ? value : new Uint8Array(value);
+      store.set(key, { bytes, contentType: opts?.httpMetadata?.contentType });
+      return obj(key, bytes, opts?.httpMetadata?.contentType);
     },
-    async get(key: string) {
-      const o = objects.get(key);
-      if (!o) return null;
-      return {
-        ...meta(key, o),
-        body: new Response(o.body as unknown as BodyInit).body,
-        arrayBuffer: async () => o.body.slice().buffer,
-        text: async () => new TextDecoder().decode(o.body),
-        writeHttpMetadata: (h: Headers) => o.contentType && h.set("content-type", o.contentType),
-      };
+    async get(key: string, opts?: { range?: { offset: number; length: number } }) {
+      const v = store.get(key);
+      if (!v) return null;
+      const bytes = opts?.range ? v.bytes.subarray(opts.range.offset, opts.range.offset + opts.range.length) : v.bytes;
+      return obj(key, bytes, v.contentType);
     },
     async head(key: string) {
-      const o = objects.get(key);
-      return o ? meta(key, o) : null;
+      const v = store.get(key);
+      return v ? obj(key, v.bytes, v.contentType) : null;
     },
     async delete(keys: string | string[]) {
-      for (const k of Array.isArray(keys) ? keys : [keys]) objects.delete(k);
-    },
-    async list(opts?: { prefix?: string }) {
-      const keys = [...objects.keys()].filter((k) => !opts?.prefix || k.startsWith(opts.prefix));
-      return { objects: keys.map((k) => meta(k, objects.get(k)!)), truncated: false, delimitedPrefixes: [] };
+      for (const k of Array.isArray(keys) ? keys : [keys]) store.delete(k);
     },
   };
-  return bucket as unknown as R2Bucket & typeof bucket;
+  return bucket as unknown as R2Bucket & { store: typeof store };
 }

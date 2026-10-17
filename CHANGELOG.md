@@ -1,44 +1,24 @@
 # Changelog
 
-All notable changes to SythiX Studio are documented here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
-[Semantic Versioning](https://semver.org/).
+All notable changes to SythiX Unite. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning: SemVer.
 
 ## [Unreleased]
 
-### Changed
-- **One-click Cloudflare deploy**: the repository now deploys with Cloudflare's default
-  "Import a repository" settings (`pnpm run build`, `npx wrangler deploy`). D1 and R2 are
-  created on deploy (no IDs in `wrangler.jsonc`), the top-level Wrangler config is production
-  (staging stays under `env.staging`), and `APP_URL` defaults to the request host.
-- The Worker applies pending D1 migrations itself on first use (`AUTO_MIGRATE=off` disables),
-  using Wrangler's `d1_migrations` table.
-- Turnstile is optional in production: without a secret, sign-up and reset rely on rate limits
-  and a warning is logged.
+## [0.1.0] - 2026-10-17
+
+The repository was rebuilt from scratch as SythiX Unite. The previous SythiX Studio code remains in git history (up to commit `af0b687`).
 
 ### Added
-- First-owner bootstrap: with no email provider and no users, the first registration becomes a
-  verified platform owner (respecting `PLATFORM_OWNER_EMAILS` when set).
-- **Studio → Users** page where platform owners can verify accounts manually, and an
-  "Installation setup" checklist on the Modules page for optional providers.
+- **SythiX ID**: registration, sign-in, sessions, profile (avatar, banner, accent, bio, links), privacy controls, appearance preferences, password change, data export, account deletion; first-account owner bootstrap; optional `OWNER_EMAILS` and Turnstile.
+- **Unite shell**: navigation rail with product areas and honest status, breadcrumbs, Everything Command palette, live notifications, customizable Home dashboard, light/dark/system themes, reduced motion.
+- **SythiX Social**: posts with images and video (R2), visibility, three feeds, follows, reactions, threaded comments, reposts, bookmarks, hashtags, trending, mentions, profile media, search, blocking, reporting.
+- **SythiX Connect**: communities, channels (text/announcement/voice placeholder/restricted), roles, invites, bans, direct and group messages, real-time delivery, typing and presence via Durable Objects, pins, reactions, message search, unread state.
+- **Moderation**: report queue, content removal, account suspension, platform roles, audit log.
+- Self-applying D1 migrations, daily maintenance cron, security headers and CSP.
+- 43 integration tests, 1 browser end-to-end test, CI workflow.
+- `FREE_TIER_AUDIT.md`, `MONTHLY_REVAMPS.md`, architecture, deployment and status docs.
 
-## [0.1.0] - 2026-10-13
-
-### Added
-- **Foundation**: Next.js 15.5 on Cloudflare Workers (OpenNext) with a custom Worker entry and
-  cron; D1 schema (6 migrations); accounts with email verification, password reset and session
-  management; scoped platform/workspace/server RBAC; rate limiting, Turnstile, CSRF origin
-  checks and security headers; module registry with health checks and feature flags; application
-  shell, command palette, global search, notifications and preferences.
-- **NexusID**: profiles with server-enforced privacy, public profile pages, friends, blocks,
-  reports and review queue, teams, event-driven achievements, placeholder cosmetics with loadouts,
-  Minecraft Java linking via Microsoft sign-in (requires configuration).
-- **ForgeOS**: projects, revisions, items, abilities, equipment sets, texture/model assets with
-  byte-level validation, version-aware datapack and resource pack export for Java 1.20.6–1.21.5,
-  deterministic verified archives, three.js preview.
-- **ServerOS**: server registration, agent credentials, the `@sythix/server-agent` package
-  (live and simulated modes), telemetry, console, moderation, plugin inventory, sandboxed config
-  editing with backups, audit, disconnect notifications.
-- **Ecosystem**: ForgeOS → ServerOS deployment workflow with compatibility checks and typed
-  production confirmation; Studio home; module manager; updates page.
-- CI and a gated, tag-driven release workflow; documentation.
+### Known limitations
+- Voice, video and screen sharing are unavailable; no media server is configured.
+- Minecraft Database, Server Hosting, Studio, Gaming, AI, Worlds and Extensions are not built.
+- No email delivery: no email verification or password-reset emails yet.
