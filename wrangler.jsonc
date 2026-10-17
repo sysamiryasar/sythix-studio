@@ -1,35 +1,23 @@
-// SythiX Studio — Cloudflare Workers configuration.
-//
-// The top level is PRODUCTION and works with Cloudflare's default "Connect to Git"
-// settings (build: `pnpm run build`, deploy: `npx wrangler deploy`):
-//   - D1 and R2 have names but no IDs: Wrangler creates them on the first deploy
-//     and reuses them afterwards.
-//   - The app applies its D1 migrations itself on startup (see src/lib/db/migrate.ts).
-//   - APP_URL is optional; when unset it is derived from the request host.
-// Local development overrides APP_ENV/APP_URL from .dev.vars.
+// SythiX Unite — one Worker serves the SPA (static assets) and the API.
+// D1 and R2 are declared by name only: `wrangler deploy` creates them on the
+// first deploy, and the Worker applies its own D1 migrations on first use.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "sythix-studio",
-  "main": "worker.ts",
-  "compatibility_date": "2026-10-01",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "name": "sythix-unite",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
   "observability": { "enabled": true },
-  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "sythix-studio" }],
   "vars": { "APP_ENV": "production" },
-  "d1_databases": [{ "binding": "DB", "database_name": "sythix-db", "migrations_dir": "migrations" }],
-  "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets" }],
-  "triggers": { "crons": ["* * * * *"] },
-
-  "env": {
-    // Optional staging environment: `wrangler deploy --env staging`.
-    "staging": {
-      "name": "sythix-studio-staging",
-      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "sythix-studio-staging" }],
-      "vars": { "APP_ENV": "staging" },
-      "d1_databases": [{ "binding": "DB", "database_name": "sythix-db-staging", "migrations_dir": "migrations" }],
-      "r2_buckets": [{ "binding": "ASSETS_BUCKET", "bucket_name": "sythix-assets-staging" }],
-      "triggers": { "crons": ["* * * * *"] }
-    }
-  }
+  "d1_databases": [{ "binding": "DB", "database_name": "sythix-unite-db", "migrations_dir": "migrations" }],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "sythix-unite-media" }],
+  "durable_objects": { "bindings": [{ "name": "REALTIME", "class_name": "RealtimeRoom" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeRoom"] }],
+  "triggers": { "crons": ["17 3 * * *"] }
 }

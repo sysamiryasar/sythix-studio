@@ -1,71 +1,93 @@
-import { setContextFactoryForTests, type AppContext } from "@/lib/context";
-import { createTestD1, applyMigrations } from "./d1";
-import { createTestR2 } from "./r2";
-import { register, verifyEmail, login } from "@/lib/auth/service";
-import { one } from "@/lib/db/sql";
-import type { SessionUser } from "@/lib/auth/session";
-import { resolveSession } from "@/lib/auth/session";
+import { buildApi } from "@worker/api";
+import { resetMigrationState } from "@worker/lib/migrate";
+import type { Env } from "@worker/env";
+import { createD1 } from "./d1";
+import { createR2 } from "./r2";
 
-export interface TestApp {
-  ctx: AppContext;
-  db: ReturnType<typeof createTestD1>;
-  bucket: ReturnType<typeof createTestR2>;
-  clock: { now: number };
-  /** Builds a Request-scoped context (as the API layer does). */
-  install: () => void;
+export interface Published {
+  room: string;
+  event: { type: string; [k: string]: unknown };
 }
 
-export function createTestApp(envOverrides: Partial<CloudflareEnv> = {}): TestApp {
-  const db = createTestD1();
-  applyMigrations(db.sqlite);
-  const bucket = createTestR2();
-  const clock = { now: Date.UTC(2026, 9, 1) };
-  const env = {
-    APP_ENV: "test",
-    APP_URL: "http://localhost:3000",
-    DB: db,
-    ASSETS_BUCKET: bucket,
-    // Naming an owner that never registers disables first-account bootstrap,
-    // so ordinary tests get ordinary members. Bootstrap has its own tests.
-    PLATFORM_OWNER_EMAILS: "owner@example.invalid",
-    ...envOverrides,
-  } as unknown as CloudflareEnv;
-  const make = (req?: Request): AppContext => ({
-    db,
-    bucket,
-    env,
-    now: () => clock.now,
-    ip: req?.headers.get("cf-connecting-ip") ?? "203.0.113.1",
-    userAgent: "vitest",
-    waitUntil: () => {},
-  });
-  const ctx = make();
-  return { ctx, db, bucket, clock, install: () => setContextFactoryForTests(async (req) => make(req)) };
+/** Fake Durable Object namespace that records broadcasts. */
+function createRealtime(published: Published[]) {
+  return {
+    idFromName: (name: string) => ({ name }),
+    get: (id: { name: string }) => ({
+      broadcast: async (payload: string) => {
+        published.push({ room: id.name, event: JSON.parse(payload) });
+        return 0;
+      },
+      fetch: async () => new Response("ws", { status: 200 }),
+    }),
+  };
 }
 
-let counter = 0;
+export function createTestApp(env: Partial<Env> = {}) {
+  resetMigrationState();
+  const db = createD1();
+  const media = createR2();
+  const published: Published[] = [];
+  const fullEnv = { DB: db, MEDIA: media, REALTIME: createRealtime(published), APP_ENV: "test", ...env } as unknown as Env;
+  const app = buildApi();
+  const fetchApi = (path: string, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers);
+    headers.set("host", "unite.test");
+    if (init.method && init.method !== "GET" && !headers.has("origin")) headers.set("origin", "http://unite.test");
+    return app.request(`http://unite.test/api${path}`, { ...init, headers }, fullEnv);
+  };
+  return { app, db, media, env: fullEnv, published, fetchApi };
+}
 
-/** Registers, verifies and logs in a user; returns the session user and raw session token. */
-export async function createUser(app: TestApp, name?: string): Promise<{ user: SessionUser; token: string }> {
-  counter++;
-  // Each account is created in its own rate-limit window.
-  app.clock.now += 60 * 60_000;
-  const username = name ?? `player${counter}`;
-  const email = `${username.toLowerCase()}@example.com`;
-  const password = "correct horse battery staple";
-  const { status } = await register(app.ctx, { email, username, password });
-  if (status !== "first_owner_ready") {
-    const tokenRow = await one<{ body_text: string }>(
-      app.ctx.db,
-      `SELECT body_text FROM email_outbox WHERE to_email = ? ORDER BY created_at DESC LIMIT 1`,
-      email,
-    );
-    const verifyToken = /token=([A-Za-z0-9_-]+)/.exec(tokenRow?.body_text ?? "")?.[1];
-    if (!verifyToken) throw new Error("verification email not found");
-    await verifyEmail(app.ctx, verifyToken);
+export type TestApp = ReturnType<typeof createTestApp>;
+
+/** A signed-in client with its own cookie. */
+let ipSeq = 0;
+export class Client {
+  cookie = "";
+  ip = `198.51.100.${(ipSeq++ % 250) + 1}`;
+  constructor(
+    readonly t: TestApp,
+    readonly username = "",
+  ) {}
+
+  async req<T = unknown>(method: string, path: string, body?: unknown, extraHeaders: Record<string, string> = {}): Promise<{ status: number; data: T; error?: { code: string; message: string } }> {
+    const headers: Record<string, string> = { "cf-connecting-ip": this.ip, ...extraHeaders };
+    if (this.cookie) headers.cookie = this.cookie;
+    let payload: BodyInit | undefined;
+    if (body instanceof Uint8Array) {
+      payload = body as BodyInit;
+      headers["content-type"] = "application/octet-stream";
+    } else if (body !== undefined) {
+      payload = JSON.stringify(body);
+      headers["content-type"] = "application/json";
+    }
+    const res = await this.t.fetchApi(path, { method, headers, body: payload });
+    const setCookie = res.headers.get("set-cookie");
+    if (setCookie) this.cookie = setCookie.split(";")[0]!;
+    const text = await res.text();
+    let json: { data?: T; error?: { code: string; message: string } } = {};
+    try {
+      json = JSON.parse(text);
+    } catch {
+      /* binary */
+    }
+    return { status: res.status, data: json.data as T, error: json.error };
   }
-  const { token } = await login(app.ctx, { email, password });
-  const user = await resolveSession(app.ctx, token);
-  if (!user) throw new Error("session did not resolve");
-  return { user, token };
+
+  get = <T = unknown>(p: string) => this.req<T>("GET", p);
+  post = <T = unknown>(p: string, b?: unknown) => this.req<T>("POST", p, b ?? {});
+  put = <T = unknown>(p: string, b?: unknown) => this.req<T>("PUT", p, b ?? {});
+  patch = <T = unknown>(p: string, b?: unknown) => this.req<T>("PATCH", p, b ?? {});
+  del = <T = unknown>(p: string) => this.req<T>("DELETE", p);
+}
+
+let n = 0;
+export async function signUp(t: TestApp, username?: string): Promise<Client> {
+  n++;
+  const name = username ?? `user${n}`;
+  const c = new Client(t, name);
+  const r = await c.post("/auth/register", { email: `${name.toLowerCase()}@example.com`, username: name, displayName: name, password: "correct horse battery" });
+  if (r.status !== 201) throw new Error(`register failed: ${JSON.stringify(r.error)}`);
+  return c;
 }

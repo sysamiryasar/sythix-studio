@@ -1,22 +1,6 @@
-# Copy to .dev.vars for local development (pnpm dev does this automatically). NEVER commit .dev.vars.
-
-# wrangler.jsonc is configured for production; local development overrides it here.
+# Local development values. Copied to .dev.vars on `pnpm dev` if missing. Never commit .dev.vars.
 APP_ENV=development
-APP_URL=http://localhost:3000
-# Production values are set with `wrangler secret put <NAME> --env production`.
-
-# Cloudflare Turnstile. These are Cloudflare's official always-pass TEST keys.
-TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA
-
-# Comma-separated emails that are granted the platform_owner role once verified.
-PLATFORM_OWNER_EMAILS=owner@example.com
-
-# Optional: transactional email via Resend's HTTP API. When unset, emails are
-# written to the dev outbox (visible at /dev/outbox in development only).
-# RESEND_API_KEY=
-# EMAIL_FROM="SythiX Studio <no-reply@example.com>"
-
-# Optional: Microsoft identity platform app for Minecraft Java account linking.
-# MS_CLIENT_ID=
-# MS_CLIENT_SECRET=
+# Optional: Cloudflare Turnstile (always-pass test keys shown).
+# TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+# Optional: AI provider (SythiX AI is disabled without one).
+# AI_PROVIDER=mock

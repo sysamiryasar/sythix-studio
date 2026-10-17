@@ -1,129 +1,88 @@
 # Architecture
 
-## Overview
+## Brand hierarchy → code
+
+SythiX Unite is one application. The product areas are sections of it, not separate apps: they share identity, design tokens, navigation, notifications, permissions and the API.
+
+| Area | Where it lives | State |
+|---|---|---|
+| SythiX ID | `services/account.ts`, `services/users.ts`, `lib/session.ts`, `pages/settings.tsx` | Live |
+| SythiX Social | `services/social.ts`, `services/media.ts`, `routes/social.ts`, `components/social.tsx`, `pages/social.tsx` | Live |
+| SythiX Connect | `services/connect.ts`, `realtime/room.ts`, `routes/connect.ts`, `components/chat.tsx`, `pages/connect.tsx` | Live (text). Voice needs an SFU |
+| Moderation (platform) | `services/moderation.ts`, `pages/platform.tsx` | Live |
+| Minecraft DB, Hosting, Studio, Gaming, AI, Worlds, Extensions | `src/shared/areas.ts` (status only) | Planned; see `MONTHLY_REVAMPS.md` |
+
+`src/shared/areas.ts` is the single source of truth for each area's honest status. The navigation, Home and the area pages all render from it.
+
+## Runtime
 
 ```
-                ┌────────────────────────── Cloudflare ──────────────────────────┐
- Browser ──────▶│ Worker (worker.ts)                                              │
-  (cookie       │  ├─ fetch → OpenNext → Next.js App Router                       │
-   session)     │  │    ├─ Server Components (pages)  ─┐                          │
-                │  │    ├─ /api/v1/*  (route())       ─┼─▶ services (src/modules) │──▶ D1 (relational)
-                │  │    └─ /api/agent/v1/* (agentRoute)┘          │               │──▶ R2 (assets, exports)
-                │  └─ scheduled (cron, every minute) → sweep + retention          │
-                └─────────────────────────────────▲───────────────────────────────┘
-                                                  │ outbound HTTPS, bearer credential
- Minecraft host ── Paper/Purpur ◀─RCON(localhost)─ @sythix/server-agent ── files (plugins/, world/datapacks)
+Browser (React SPA) ──HTTPS──► Cloudflare Worker (src/worker/index.ts)
+                                 ├─ /api/*  → Hono app (routes → services → D1/R2)
+                                 ├─ /api/realtime?room=… → auth → Durable Object (RealtimeRoom)
+                                 └─ everything else → static assets (SPA fallback)
+                               Cron (daily 03:17 UTC) → maintenance
 ```
 
-One Worker serves the UI, the browser API and the agent API. There is no separate backend:
-Server Components and route handlers call the same typed service functions.
+- **One Worker** serves both the SPA (assets binding, `run_worker_first` only for `/api/*`) and the API. This keeps Cloudflare's default "Import a repository" settings working.
+- **D1** stores all relational data. Each `migrations/*.sql` file is bundled into the Worker by `scripts/gen-migrations.mjs` and applied on the first request (`lib/migrate.ts`), tracked in Wrangler's `d1_migrations` table.
+- **R2** stores media at server-generated keys (`media/<user>/<id>`, `avatars/<user>/<id>`). Downloads go through the API, which authorizes against the post's visibility.
+- **Durable Objects:** one `RealtimeRoom` per room (`channel:<id>`, `conv:<id>`, `user:<id>`). The Worker authenticates and authorizes before forwarding the WebSocket. The object fans out events and computes presence. It uses the Hibernation API to avoid duration charges for idle sockets.
 
-## Layers
+## Request lifecycle
 
-| Layer | Location | Rule |
-|---|---|---|
-| Routes | `src/app/**` | Thin. Pages call services directly; API routes wrap services in `route()` / `agentRoute()`. |
-| HTTP wrappers | `src/lib/http/api.ts`, `agent.ts` | Context, module gating, CSRF origin check, session or agent auth, rate limits, uniform JSON errors. |
-| Services | `src/modules/*`, `src/lib/auth`, `src/lib/notifications.ts` … | Take an `AppContext`; perform **all** authorization; never trust callers. |
-| Data | D1 via `src/lib/db/sql.ts` | Parameterised SQL only. Migrations in `migrations/`. |
-| Blobs | R2 | Server-generated keys (`projects/<id>/<kind>/<assetId>`, `exports/<ws>/<project>/<id>.zip`). |
+`createApp()` middleware (`src/worker/app.ts`) runs in this order:
+1. Ensure migrations have run.
+2. Build the request context.
+3. CSRF origin check on non-GET requests.
+4. Resolve the session cookie.
+5. Per-user mutation rate limit.
 
-`AppContext` (`src/lib/context.ts`) carries `db`, `bucket`, `env`, `now()`, request IP/UA and
-`waitUntil`. Tests inject an in-memory implementation; production obtains bindings from
-`getCloudflareContext()`.
+Routes validate input with zod schemas from `src/shared/schemas.ts`, which the client forms also use. Services do the authorization and data work. Errors become `{ error: { code, message, details } }` with the matching HTTP status.
 
-## Identity, tenancy and authorization
+## Real-time design
 
-- **Accounts**: email + password (PBKDF2-SHA256 via WebCrypto, 100k iterations — the Workers
-  maximum — in a versioned hash format). Login requires a verified email.
-- **Sessions**: 256-bit random tokens; only SHA-256 hashes are stored. HttpOnly, SameSite=Lax,
-  `__Host-` prefixed and Secure outside development. 30-day sliding expiry; per-session revocation.
-- **Workspaces** own projects and servers. Every account gets a personal workspace.
-- **RBAC** (`src/lib/authz/roles.ts`) has three independent scopes:
-  - *platform*: `platform_owner`, `platform_admin`, `member`
-  - *workspace*: `workspace_owner`, `workspace_admin`, `developer`, `creator`, `workspace_member`
-  - *server*: `server_admin`, `server_moderator`, `server_viewer` — granted **per server**
-  
-  A workspace role never implies a server role. Deploying a ForgeOS export needs *both*
-  `project.deploy.request` (workspace) and `server.deploy` (server). The same matrix is seeded into
-  D1 (`roles`, `role_permissions`); a test fails if code and database drift.
-- Non-members receive **404 rather than 403** for workspaces, projects and servers, so existence
-  is not leaked.
+Writes always go to D1 first. After the write succeeds, the service calls `publish(room, event)`, an RPC to the room's Durable Object, through `waitUntil`. Delivery is best-effort; the database remains the source of truth. Clients reconnect with exponential backoff and refetch history on reconnect, so nothing sent while they were offline is lost. Typing indicators are sent directly by clients to the room, throttled to one every 2 s per connection. Presence respects the "Show activity" privacy setting.
 
-## Modules
+**Voice and video are separate from this.** WebSockets only carry signalling. Media needs a WebRTC SFU plus TURN (planned: Cloudflare Realtime). Until those are configured, `/api/voice/status` reports unavailable and voice channels say so; calls are never simulated.
 
-See [MODULES.md](MODULES.md). Modules are compiled-in manifests registered in
-`src/modules/index.ts`. The runtime state (enabled flag, installed version, health) lives in
-`module_registrations`; availability also requires satisfied dependencies, a compatible platform
-version and applied migrations (read from `d1_migrations`). Disabled modules disappear from
-navigation and their routes return 404 (pages) or `503 module_disabled` (API).
+## Data model (summary)
 
-## ServerOS agent protocol
+- **Identity:** `users`, `sessions` (token hash only), `profiles`, `preferences`, `user_blocks`.
+- **Social:** `follows`, `posts` (with denormalised counters, `repost_of`, `status` visible/hidden), `media`, `reactions` (one per user per post), `comments` (one nesting level), `bookmarks`, `post_tags`.
+- **Connect:** `communities`, `community_members` (role), `community_bans`, `community_invites`, `channels` (`min_role` gates viewing), `conversations` (`dm_key` keeps one 1:1 conversation per pair), `conversation_members`, `messages` (belongs to exactly one channel or conversation), `message_reactions`, `read_states`.
+- **Platform:** `notifications`, `reports`, `audit_log`, `rate_limits`.
 
-1. An admin registers a server and issues a credential `sxa_<prefix>_<secret>` (shown once).
-2. The agent `POST /api/agent/v1/heartbeat` every ~10s with status, telemetry, console lines, the
-   ban list (when changed) and results of previous operations.
-3. The response carries queued **typed operations** (`console.command`, `players.kick|ban|unban`,
-   `plugins.scan`, `config.read|write|backups|restore`, `datapack.deploy`). There is no generic
-   shell or arbitrary file access.
-4. The cloud refuses to queue anything for a disconnected server or for a capability the agent did
-   not advertise; the agent re-validates every operation against its **own** local allowlist,
-   path sandbox and console denylist, so a compromised cloud still cannot exceed local policy.
-5. Results update the command row; side effects (plugin inventory, deployment status,
-   notifications, achievements) are applied server-side. Results for other servers' commands are
-   ignored.
+## Permissions
 
-A server is *online* if a heartbeat arrived within 45 seconds. A cron trigger notifies admins
-once per outage and applies data retention. Real-time updates use short polling (console 2s);
-see [STATUS.md](STATUS.md) for the Durable Objects upgrade path.
+Defined once in `src/shared/permissions.ts` and enforced in services:
+- **Platform:** member < moderator (review reports, hide content) < admin (suspend users, audit log) < owner (set roles).
+- **Community:** member (view, post, invite) < moderator (pin, delete any message, kick, post announcements) < admin (ban, roles, channels, settings) < owner (delete community).
+- An actor may only act on accounts ranked strictly below them.
 
-## ForgeOS export pipeline
+## Post visibility
 
-`content → validate → generate → verify → zip → store`
+`visibleTo(viewer)` in `services/social.ts` is one SQL predicate used by every read path. A post is visible when its author is active, it isn't hidden (authors still see their own hidden posts, flagged), and neither user has blocked the other. In addition, at least one of these must hold:
+- the viewer is the author;
+- the post is public and the author's profile is public;
+- the post is public or followers-only, the viewer follows the author, and the author's profile isn't private;
+- the post is a community post and the viewer is a member of that community.
 
-- `versions.ts` encodes per-version formats (pack formats, singular vs plural data folders,
-  `generic.` attribute prefixes, modifier ids vs name/UUID, ingredient encoding, enchantment and
-  attribute-modifier component shapes, JSON-string vs inline text components, `item_model` +
-  `assets/<ns>/items` vs `custom_model_data` overrides, `consumable` split).
-- The **datapack** gives items through loot tables (`loot give @s loot ns:items/<id>`), which keeps
-  text components as JSON objects across versions, plus shaped recipes with version-correct
-  result components.
-- The **resource pack** derives model ids from the same content, so packs exported separately
-  still agree.
-- Abilities, on-hit effects and set bonuses cannot be expressed in vanilla data and are exported
-  only to `sythix-runtime.json`, explicitly labelled for a *planned* runtime plugin.
-- After generation every JSON file is re-parsed and references (models → textures, item
-  definitions → models, overrides → models, functions → loot tables, pack formats) are checked.
-  Archives are deterministic (sorted entries, fixed timestamps) and include a SHA-256 manifest.
-- Exports pin a project **revision**; an export creates one automatically when content changed.
+## Discover algorithm
 
-## Deployment workflow
+Public original posts from the last 7 days by accounts the viewer doesn't follow, ranked by `(1 + 2·reactions + 3·comments + 4·reposts) / (age_hours + 2)²`. It is shown to users in plain words on the Discover tab.
 
-`plan → review → confirm (typed for production) → dispatch → agent verifies hash → install with backup → optional /minecraft:reload → result`.
-Checks are evaluated when the plan is created **and again** at confirmation. Plans expire after
-30 minutes. The server is never restarted. Implemented in `src/modules/ecosystem/deployments.ts`.
+## Design system
 
-## Runtime decisions
+Tokens are in `src/client/styles.css`: an obsidian dark theme with violet, cyan and magenta accents, plus a full light theme. Contrast is chosen to be at least 4.5:1 for text. Tokens are exposed to Tailwind through `@theme inline`. `data-theme` and `data-motion` on `<html>` follow user preferences. Primitives are in `components/ui.tsx`: Button, Field, Input, Select, Toggle, Panel, Tabs, Dialog (native `<dialog>`), Toast, Avatar, Badge, EmptyState, ErrorState and Spinner. The logo mark is original SVG artwork (`components/logo.tsx`).
 
-| Decision | Why |
-|---|---|
-| Next.js **15.5.27** | 16.4.0 failed in workerd (`preview-props.json` manifest) and 16.3.8 failed with a dynamic `require("fs")` in Next's dev logger. 15.5.27 is in OpenNext 1.20's supported range and passes the end-to-end checks. Revisit when OpenNext declares support for newer 16.x. |
-| TypeScript 5.9 | TypeScript 7 (native) is not yet relied upon by Next's type checking. |
-| PBKDF2 (WebCrypto) | Native in Workers, no WASM; the free plan's CPU limit rules out memory-hard JS hashing. Versioned format allows rehash-on-login to Argon2id later. |
-| Polling instead of WebSockets | Works on any plan and in tests; console latency ≈2s. Durable Objects hub is the planned upgrade. |
-| D1 rate-limit table | Portable, testable; can be swapped for the Workers Rate Limiting binding. |
-| Synchronous exports | Typical exports are kilobytes and finish well inside one request. Queues are the planned path for large asset bundles. |
-| CSP with `'unsafe-inline'` scripts | App Router emits inline RSC scripts; nonces need middleware. All other directives are locked down. |
+## Testing
 
-## Data retention
+- `tests/*.test.ts` run the real Hono app and real SQL against node:sqlite (a D1 adapter), an in-memory R2 and a fake realtime namespace that records broadcasts.
+- `e2e/smoke.spec.ts` drives two real browsers against `wrangler dev` (workerd, local D1, R2 and Durable Objects). It covers sign-up, posting with an image, mentions, follows, reactions, tags, search, community invites, two-way real-time chat, DMs and theme switching.
 
-| Data | Retention | Where |
-|---|---|---|
-| Telemetry minute buckets | 7 days | `pruneData` (cron) |
-| Console lines | newest 2000 per server | cron |
-| `config.read` results / `config.write` payloads (file contents) | 1 hour | cron |
-| Server commands | 30 days | cron |
-| Expired/revoked sessions | 30 days after expiry/revocation | cron |
-| Read notifications | 90 days | cron |
-| Audit events | kept (append-only) | — |
-| Email bodies in `email_outbox` | not stored in production | `sendEmail` |
+## Planned integrations (designed, not built)
+
+- **Minecraft Database:** adapters per data source. Mojang profile API for UUID ↔ name. Java server list ping through a provider that can open TCP; Workers' `connect()` is a candidate and must be verified first. Data is labelled "verified" vs "user-submitted" with last-checked times. Bedrock comes later.
+- **Server Hosting:** a provider interface (`createServer`, `power`, `console`, `files`, `backups`) implemented first by a Pterodactyl-panel adapter or a scoped self-hosted agent. Typed actions only, signed requests, quotas and audit. It never exposes a shell, Docker or host credentials to the browser.
+- **AI:** a provider interface with a clearly labelled local mock. Permission-aware retrieval goes through the same `visibleTo` / membership checks. Every action needs explicit user confirmation. Usage caps and timeouts apply.
