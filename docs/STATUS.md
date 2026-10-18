@@ -35,4 +35,5 @@ Legend: ✅ works and is tested · 🟡 partial · ⛔ not built / needs infrast
 - `pnpm lint`, `pnpm typecheck` (client and worker), `pnpm test` (43 tests) and `pnpm build` all pass.
 - `wrangler dev` with a fresh local D1 applied the migrations itself.
 - The Playwright end-to-end test passes in Chromium against workerd, including real-time chat between two browsers.
-- **Not yet done:** a deploy to a real Cloudflare account. No account credentials are available to this repository's automation.
+- **After 0.1.0:** the first real Cloudflare deploy built and created D1, but failed on the missing R2 bucket. Media now uses Supabase Storage (or optional R2), and deploys succeed without either. The Supabase adapter is tested against an emulated Storage API, not yet against a live Supabase project.
+- **Not yet done:** a successful deploy to a real Cloudflare account. No account credentials are available to this repository's automation.

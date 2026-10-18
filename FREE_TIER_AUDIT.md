@@ -31,18 +31,26 @@ Last verified: **2026-10-17**, against the official pages linked below. Re-verif
 | **Guardrails in code** | Per-user rate limits on posts, comments, messages, uploads, searches and reports (`src/worker/lib/rate-limit.ts`). Daily cleanup of expired sessions, rate-limit rows and old read notifications. |
 | **Fallback / migration** | Workers Paid includes 50M writes/month. Schema and SQL are portable SQLite, which can be exported with `wrangler d1 export`. |
 
-### Cloudflare R2: media storage
+### Supabase Storage: media storage (default)
 
 | | |
 |---|---|
-| **Purpose** | Images, videos and avatars uploaded by users. |
-| **Free allowance** | 10 GB-month of storage, 1 million Class A operations/month, 10 million Class B operations/month (Standard storage only). Egress is free. |
-| **Source** | https://developers.cloudflare.com/r2/pricing/ |
-| **Payment requirement** | ⚠️ Cloudflare may ask for a payment method before R2 can be enabled on an account, even on the free tier. This was not confirmed from official docs, so check in the dashboard. Without R2, uploads fail but everything else works. |
-| **When exceeded** | Usage above the free allowance is billed if a payment method is on file. |
-| **Risks** | Video uploads (25 MB cap each) fill 10 GB quickly. |
-| **Guardrails in code** | Uploads are capped at 5 MB per image, 25 MB per video, 2 MB per avatar and 40 per user per hour. Files are type-checked by their bytes. Uploads never attached to a post are swept after 24 hours. |
-| **Fallback / migration** | Lower the caps in `src/shared/schemas.ts`, or disable video. Any S3-compatible store works by replacing `services/media.ts`. |
+| **Purpose** | Images, videos and avatars uploaded by users. The Worker talks to it server-side; browsers never see the key or a direct file URL. |
+| **Free allowance** | 1 GB of file storage per project; 2 free projects. Third-party 2026 guides disagree on monthly bandwidth (500 MB–5 GB); check the Supabase dashboard's usage page. |
+| **Sources** | https://automationatlas.io/answers/supabase-free-tier-limits-2026/ · https://www.jetadmin.io/blog/supabase-pricing-2026-guide-to-plans-limits-and-real-world-costs/ · https://costbench.com/software/database-as-service/supabase/free-plan/ (third-party; re-check https://supabase.com/pricing) |
+| **Payment requirement** | None reported for the Free plan. |
+| **When exceeded** | Uploads fail; the app shows "Media storage returned an error". |
+| **Risks** | ⚠️ **Free projects pause after about a week without activity**, after which uploads and downloads fail until the project is restored from the Supabase dashboard. The 1 GB fills quickly with video. |
+| **Guardrails in code** | Uploads are capped at 5 MB per image, 25 MB per video, 2 MB per avatar and 40 per user per hour; files are type-checked by their bytes; uploads never attached to a post are swept after 24 hours; the bucket is created private. |
+| **Fallback / migration** | Cloudflare R2 is supported by adding an R2 binding (see below). Without any storage the app keeps working and uploads are disabled with a message. |
+
+### Cloudflare R2: media storage (optional alternative)
+
+| | |
+|---|---|
+| **Free allowance** | 10 GB-month storage, 1M Class A and 10M Class B operations/month, free egress. Source: https://developers.cloudflare.com/r2/pricing/ |
+| **Payment requirement** | ⚠️ Enabling R2 may require a payment method, so it is **not** the default. On the first deploy the bucket was not created automatically, which failed the deploy; the binding was then removed from `wrangler.jsonc`. |
+| **To use** | Create a bucket in the dashboard, then add `"r2_buckets": [{ "binding": "MEDIA", "bucket_name": "<name>" }]` to `wrangler.jsonc`. Supabase takes precedence when both are configured. |
 
 ### Cloudflare Durable Objects (SQLite-backed): real-time rooms
 

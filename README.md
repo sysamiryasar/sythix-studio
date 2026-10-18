@@ -18,7 +18,7 @@ SythiX Unite is the all-in-one platform of the SythiX ecosystem. It brings socia
 
 ## Stack
 
-React 19 + TypeScript + Vite + Tailwind CSS 4 (client) · Hono on Cloudflare Workers (API) · D1 (database) · R2 (media) · Durable Objects with WebSocket Hibernation (real-time) · Vitest and Playwright (tests) · GitHub Actions (CI). One Worker serves the app and the API.
+React 19 + TypeScript + Vite + Tailwind CSS 4 (client) · Hono on Cloudflare Workers (API) · D1 (database) · Supabase Storage or Cloudflare R2 (media) · Durable Objects with WebSocket Hibernation (real-time) · Vitest and Playwright (tests) · GitHub Actions (CI). One Worker serves the app and the API.
 
 ```
 src/
@@ -50,7 +50,7 @@ pnpm test:e2e       # browser test; needs `pnpm preview` running on a fresh loca
 
 ## Deploy to Cloudflare
 
-Cloudflare dashboard → **Workers & Pages → Create → Import a repository** → this repository. Keep the defaults: build `pnpm run build`, deploy `npx wrangler deploy`. D1, R2 and the Durable Object are created on the first deploy. R2 must be enabled on the account once (see [FREE_TIER_AUDIT.md](FREE_TIER_AUDIT.md)). Full guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Cloudflare dashboard → **Workers & Pages → Create → Import a repository** → this repository, project name `sythix-unite`. Keep the defaults: build `pnpm run build`, deploy `npx wrangler deploy`. D1 and the Durable Object are created on the first deploy. Photos and videos are stored in **Supabase Storage** (free tier): add `SUPABASE_URL` and the `SUPABASE_SERVICE_KEY` secret. Until then uploads are disabled and everything else works. Full guide: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Documentation
 

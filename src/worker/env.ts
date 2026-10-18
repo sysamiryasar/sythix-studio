@@ -2,7 +2,12 @@ import type { RealtimeRoom } from "./realtime/room";
 
 export interface Env {
   DB: D1Database;
-  MEDIA: R2Bucket;
+  /** Optional Cloudflare R2 bucket for media. Supabase Storage is used instead when configured. */
+  MEDIA?: R2Bucket;
+  /** Supabase Storage for media (free tier): project URL, secret/service-role key, bucket name. */
+  SUPABASE_URL?: string;
+  SUPABASE_SERVICE_KEY?: string;
+  SUPABASE_BUCKET?: string;
   ASSETS?: Fetcher;
   REALTIME: DurableObjectNamespace<RealtimeRoom>;
   APP_ENV?: string;

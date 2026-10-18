@@ -8,6 +8,7 @@ import { platformCan } from "@shared/permissions";
 import { api, errorMessage } from "../lib/api";
 import { compact, fullDate, relativeTime } from "../lib/format";
 import { useMe } from "../lib/session";
+import { useUploadsEnabled } from "../lib/config";
 import { Avatar, Badge, Button, Dialog, EmptyState, ErrorState, Field, Select, Spinner, Textarea, cn, useToast } from "./ui";
 
 // Cache helpers ----------------------------------------------------------------------
@@ -395,6 +396,7 @@ export function Composer({ onPosted, autoFocus, compact: small }: { onPosted?: (
   const [body, setBody] = useState("");
   const [visibility, setVisibility] = useState<"public" | "followers" | "private">("public");
   const [files, setFiles] = useState<Attachment[]>([]);
+  const uploadsEnabled = useUploadsEnabled();
   const fileRef = useRef<HTMLInputElement>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
 
@@ -480,7 +482,7 @@ export function Composer({ onPosted, autoFocus, compact: small }: { onPosted?: (
         )}
         <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border pt-2.5">
           <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" multiple hidden onChange={(e) => addFiles(e.target.files)} />
-          <Button size="icon" variant="ghost" onClick={() => fileRef.current?.click()} disabled={files.length >= LIMITS.mediaPerPost} aria-label="Add images or video" title="Images up to 5 MB, video up to 25 MB">
+          <Button size="icon" variant="ghost" onClick={() => fileRef.current?.click()} disabled={files.length >= LIMITS.mediaPerPost || uploadsEnabled === false} aria-label="Add images or video" title={uploadsEnabled === false ? "Photo and video uploads aren't set up on this installation yet" : "Images up to 5 MB, video up to 25 MB"}>
             <ImagePlus className="h-4 w-4" />
           </Button>
           <Select value={visibility} onChange={(e) => setVisibility(e.target.value as typeof visibility)} aria-label="Who can see this" className="h-8 w-auto py-0 text-xs">

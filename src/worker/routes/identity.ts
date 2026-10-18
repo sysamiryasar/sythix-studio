@@ -101,8 +101,7 @@ export function identityRoutes(app: Hono<AppEnv>) {
     requireUser(c);
     const p = await one<{ avatar_key: string | null }>(c.get("ctx").db, `SELECT avatar_key FROM profiles WHERE user_id = ?`, c.req.param("userId"));
     if (!p?.avatar_key) throw new AppError("not_found", "No avatar.");
-    const obj = await c.env.MEDIA.head(p.avatar_key);
-    return serveObject(c.get("ctx"), p.avatar_key, obj?.httpMetadata?.contentType ?? "image/png", undefined);
+    return serveObject(c.get("ctx"), p.avatar_key, media.avatarContentType(p.avatar_key), undefined);
   });
 
   app.get("/users/:username", async (c) => ok(c, await users.getProfile(c.get("ctx"), requireUser(c).id, c.req.param("username"))));

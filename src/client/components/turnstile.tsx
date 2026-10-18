@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../lib/api";
+import { usePublicConfig } from "../lib/config";
 
 declare global {
   interface Window {
@@ -10,7 +9,7 @@ declare global {
 
 /** Renders Cloudflare Turnstile when the installation has it configured; otherwise nothing. */
 export function Turnstile({ onToken }: { onToken: (t: string | undefined) => void }) {
-  const cfg = useQuery({ queryKey: ["public-config"], queryFn: () => api<{ turnstileSiteKey: string | null }>("/platform/public-config"), staleTime: Infinity });
+  const cfg = usePublicConfig();
   const ref = useRef<HTMLDivElement>(null);
   const siteKey = cfg.data?.turnstileSiteKey;
   useEffect(() => {

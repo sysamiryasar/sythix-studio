@@ -4,6 +4,7 @@ import { one, run } from "../lib/db";
 import { AppError, notFound } from "../lib/errors";
 import { newId } from "../lib/ids";
 import { enforce, LIMIT } from "../lib/rate-limit";
+import { getStorage, requireStorage } from "../lib/storage";
 
 export interface Sniffed {
   kind: "image" | "video";
@@ -68,6 +69,7 @@ export function sniff(b: Uint8Array): Sniffed | null {
 }
 
 export async function upload(ctx: Ctx, userId: string, bytes: Uint8Array) {
+  const storage = requireStorage(ctx.env);
   await enforce(ctx, LIMIT.upload, userId);
   const s = sniff(bytes);
   if (!s) throw new AppError("unsupported_media", "Upload a PNG, JPEG, GIF or WebP image, or an MP4/WebM video.");
@@ -76,7 +78,7 @@ export async function upload(ctx: Ctx, userId: string, bytes: Uint8Array) {
   if (s.width && s.height && (s.width > 12000 || s.height > 12000)) throw new AppError("bad_request", "Image dimensions are too large.");
   const id = newId("med");
   const key = `media/${userId}/${id}`;
-  await ctx.env.MEDIA.put(key, bytes, { httpMetadata: { contentType: s.contentType } });
+  await storage.put(key, bytes, s.contentType);
   await run(
     ctx.db,
     `INSERT INTO media (id, owner_id, kind, r2_key, content_type, size_bytes, width, height, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -94,25 +96,41 @@ export async function upload(ctx: Ctx, userId: string, bytes: Uint8Array) {
 }
 
 export async function setAvatar(ctx: Ctx, userId: string, bytes: Uint8Array) {
+  const storage = requireStorage(ctx.env);
   await enforce(ctx, LIMIT.upload, userId);
   const s = sniff(bytes);
   if (!s || s.kind !== "image") throw new AppError("unsupported_media", "Avatars must be PNG, JPEG, GIF or WebP images.");
   if (bytes.byteLength > LIMITS.avatarBytes) throw new AppError("payload_too_large", "Avatars can be at most 2 MB.");
   const prev = await one<{ avatar_key: string | null }>(ctx.db, `SELECT avatar_key FROM profiles WHERE user_id = ?`, userId);
-  const key = `avatars/${userId}/${newId("ava")}`;
-  await ctx.env.MEDIA.put(key, bytes, { httpMetadata: { contentType: s.contentType } });
+  const key = `avatars/${userId}/${newId("ava")}.${s.contentType.split("/")[1]}`;
+  await storage.put(key, bytes, s.contentType);
   await run(ctx.db, `UPDATE profiles SET avatar_key = ? WHERE user_id = ?`, key, userId);
-  if (prev?.avatar_key) ctx.waitUntil(ctx.env.MEDIA.delete(prev.avatar_key));
+  if (prev?.avatar_key) ctx.waitUntil(storage.delete([prev.avatar_key]));
 }
 
 export async function clearAvatar(ctx: Ctx, userId: string) {
   const prev = await one<{ avatar_key: string | null }>(ctx.db, `SELECT avatar_key FROM profiles WHERE user_id = ?`, userId);
   await run(ctx.db, `UPDATE profiles SET avatar_key = NULL WHERE user_id = ?`, userId);
-  if (prev?.avatar_key) ctx.waitUntil(ctx.env.MEDIA.delete(prev.avatar_key));
+  if (prev?.avatar_key) deleteObjects(ctx, [prev.avatar_key]);
 }
 
-/** Streams an R2 object with a fixed content type, honouring a single byte range (video seeking). */
+/** Avatar keys end in the image subtype (png/jpeg/gif/webp); anything else is served as PNG. */
+export function avatarContentType(key: string): string {
+  const ext = key.split(".").pop();
+  return ext && ["png", "jpeg", "gif", "webp"].includes(ext) ? `image/${ext}` : "image/png";
+}
+
+/** Best-effort background deletion of stored files. */
+export function deleteObjects(ctx: Ctx, keys: string[]) {
+  const storage = getStorage(ctx.env);
+  if (storage && keys.length) ctx.waitUntil(storage.delete(keys).catch((err) => console.error(JSON.stringify({ level: "warn", event: "storage.delete_failed", message: (err as Error).message }))));
+}
+
+/** Streams a stored file with a fixed content type, honouring a single byte range (video seeking). */
 export async function serveObject(ctx: Ctx, key: string, contentType: string, rangeHeader: string | undefined): Promise<Response> {
+  const storage = requireStorage(ctx.env);
+  const obj = await storage.get(key, rangeHeader);
+  if (!obj) throw notFound("File");
   const headers = new Headers({
     "content-type": contentType,
     "x-content-type-options": "nosniff",
@@ -120,23 +138,9 @@ export async function serveObject(ctx: Ctx, key: string, contentType: string, ra
     "cache-control": "private, max-age=3600",
     "accept-ranges": "bytes",
   });
-  const m = rangeHeader ? /^bytes=(\d+)-(\d*)$/.exec(rangeHeader) : null;
-  if (m) {
-    const head = await ctx.env.MEDIA.head(key);
-    if (!head) throw notFound("File");
-    const start = Number(m[1]);
-    const end = m[2] ? Math.min(Number(m[2]), head.size - 1) : head.size - 1;
-    if (start > end || start >= head.size) return new Response(null, { status: 416, headers: { "content-range": `bytes */${head.size}` } });
-    const obj = await ctx.env.MEDIA.get(key, { range: { offset: start, length: end - start + 1 } });
-    if (!obj) throw notFound("File");
-    headers.set("content-range", `bytes ${start}-${end}/${head.size}`);
-    headers.set("content-length", String(end - start + 1));
-    return new Response(obj.body, { status: 206, headers });
-  }
-  const obj = await ctx.env.MEDIA.get(key);
-  if (!obj) throw notFound("File");
-  headers.set("content-length", String(obj.size));
-  return new Response(obj.body, { status: 200, headers });
+  if (obj.contentRange) headers.set("content-range", obj.contentRange);
+  if (obj.contentLength !== undefined) headers.set("content-length", String(obj.contentLength));
+  return new Response(obj.status === 416 ? null : obj.body, { status: obj.status, headers });
 }
 
 /** Daily: delete uploads never attached to a post within 24 hours. */
@@ -147,7 +151,8 @@ export async function sweepOrphans(ctx: Ctx) {
     .all<{ id: string; r2_key: string }>();
   const list = rows.results ?? [];
   if (!list.length) return 0;
-  await ctx.env.MEDIA.delete(list.map((r) => r.r2_key));
+  const storage = getStorage(ctx.env);
+  if (storage) await storage.delete(list.map((r) => r.r2_key));
   for (const r of list) await run(ctx.db, `DELETE FROM media WHERE id = ?`, r.id);
   return list.length;
 }

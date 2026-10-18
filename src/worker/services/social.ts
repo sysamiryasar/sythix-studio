@@ -8,6 +8,7 @@ import { badRequest, forbidden, notFound } from "../lib/errors";
 import { newId } from "../lib/ids";
 import { enforce, LIMIT } from "../lib/rate-limit";
 import { notify } from "./notifications";
+import { deleteObjects } from "./media";
 import { summariesById, findByUsername, canViewProfileContent } from "./users";
 
 export interface Viewer {
@@ -313,7 +314,7 @@ export async function deletePost(ctx: Ctx, viewer: Viewer, id: string): Promise<
     ...(row.repost_of ? [stmt(ctx.db, `UPDATE posts SET repost_count = MAX(0, repost_count - 1) WHERE id = ?`, row.repost_of)] : []),
     stmt(ctx.db, `DELETE FROM posts WHERE id = ?`, id),
   ]);
-  if (keys.length) ctx.waitUntil(ctx.env.MEDIA.delete(keys.map((k) => k.r2_key)));
+  deleteObjects(ctx, keys.map((k) => k.r2_key));
 }
 
 // Engagement ---------------------------------------------------------------------

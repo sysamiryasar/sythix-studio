@@ -25,11 +25,18 @@ test("SythiX Unite end to end: ID, Social, Connect with realtime", async ({ brow
   // Social: Alice posts with an image and a hashtag.
   await alice.goto("/social");
   await alice.getByLabel("Write a post").first().fill(`First light in the Unite #launch${run} @${bobUser}`);
-  await alice.locator('input[type="file"]').first().setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: PNG });
+  const cfg = await (await alice.request.get("/api/platform/public-config")).json();
+  const uploads = cfg.data.mediaStorage !== null;
+  if (uploads) {
+    await alice.locator('input[type="file"]').first().setInputFiles({ name: "pixel.png", mimeType: "image/png", buffer: PNG });
+  } else {
+    // No media storage configured: the attach button is disabled with an explanation.
+    await expect(alice.getByRole("button", { name: "Add images or video" }).first()).toBeDisabled();
+  }
   await expect(alice.getByRole("button", { name: "Post", exact: true })).toBeEnabled();
   await alice.getByRole("button", { name: "Post", exact: true }).click();
   await expect(alice.getByText(`First light in the Unite`).first()).toBeVisible();
-  await expect(alice.locator('article img[src^="/api/media/"]').first()).toBeVisible();
+  if (uploads) await expect(alice.locator('article img[src^="/api/media/"]').first()).toBeVisible();
 
   // Bob gets a mention notification, follows Alice and reacts.
   await bob.goto("/notifications");
