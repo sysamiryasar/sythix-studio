@@ -7,6 +7,7 @@ import { ACCENTS, BANNERS, LIMITS } from "@shared/schemas";
 import { api, errorMessage } from "../lib/api";
 import { relativeTime } from "../lib/format";
 import { useMe, type MeWithAccent } from "../lib/session";
+import { useUploadsEnabled } from "../lib/config";
 import { Avatar, Badge, Button, Dialog, Field, Input, PageHeader, Panel, PanelHeader, Select, Spinner, Textarea, Toggle, cn, useToast } from "../components/ui";
 
 const SECTIONS = [
@@ -37,6 +38,7 @@ function ProfileSection() {
   const qc = useQueryClient();
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const uploadsEnabled = useUploadsEnabled();
   const [form, setForm] = useState({ displayName: me.displayName, bio: me.profile.bio, location: me.profile.location, website: me.profile.website, pronouns: me.profile.pronouns, accent: me.accentName, banner: me.profile.banner });
   const save = useSave<typeof form>("/me/profile", "Profile saved");
   const avatar = useMutation({
@@ -87,7 +89,7 @@ function ProfileSection() {
           <Avatar user={me} size={112} className="rounded-2xl" />
           <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden onChange={(e) => e.target.files?.[0] && avatar.mutate(e.target.files[0])} />
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" loading={avatar.isPending} onClick={() => fileRef.current?.click()}>
+            <Button size="sm" variant="outline" loading={avatar.isPending} disabled={uploadsEnabled === false} onClick={() => fileRef.current?.click()}>
               <Upload className="h-4 w-4" /> Upload
             </Button>
             {me.avatarUrl && (
@@ -96,7 +98,7 @@ function ProfileSection() {
               </Button>
             )}
           </div>
-          <p className="text-xs text-faint">PNG, JPEG, GIF or WebP up to 2 MB.</p>
+          <p className="text-xs text-faint">{uploadsEnabled === false ? "Uploads aren't set up on this installation yet." : "PNG, JPEG, GIF or WebP up to 2 MB."}</p>
         </div>
       </div>
     </Panel>

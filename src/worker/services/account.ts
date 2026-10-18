@@ -12,6 +12,7 @@ import { enforce, LIMIT } from "../lib/rate-limit";
 import { audit } from "../lib/audit";
 import { avatarUrl, ACCENT_HEX } from "./users";
 import { recount } from "./social";
+import { deleteObjects } from "./media";
 
 async function verifyTurnstile(ctx: Ctx, token: string | undefined): Promise<void> {
   const secret = ctx.env.TURNSTILE_SECRET_KEY;
@@ -209,6 +210,6 @@ export async function deleteAccount(ctx: Ctx, userId: string, password: string) 
   );
   await run(ctx.db, `DELETE FROM users WHERE id = ?`, userId);
   await recount(ctx, touched.map((t) => t.id));
-  if (keys.length) ctx.waitUntil(ctx.env.MEDIA.delete(keys.map((k) => k.r2_key)));
+  deleteObjects(ctx, keys.map((k) => k.r2_key));
   await audit(ctx, { actorId: null, action: "account.deleted", targetType: "user", targetId: userId });
 }

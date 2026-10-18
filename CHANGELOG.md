@@ -4,6 +4,11 @@ All notable changes to SythiX Unite. Format: [Keep a Changelog](https://keepacha
 
 ## [Unreleased]
 
+### Changed
+- **Media storage moved to Supabase Storage** (free tier, no card) through a storage adapter (`src/worker/lib/storage.ts`). Cloudflare R2 remains supported as an opt-in binding. The R2 binding was removed from `wrangler.jsonc` because the first Cloudflare deploy failed with "R2 bucket not found".
+- Without any storage configured, the app deploys and works; uploads and avatars are disabled with a clear message.
+- The Supabase bucket is created private on the first upload; all downloads still go through the API's authorization.
+
 ## [0.1.0] - 2026-10-17
 
 The repository was rebuilt from scratch as SythiX Unite. The previous SythiX Studio code remains in git history (up to commit `af0b687`).

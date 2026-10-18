@@ -1,6 +1,9 @@
 // SythiX Unite — one Worker serves the SPA (static assets) and the API.
-// D1 and R2 are declared by name only: `wrangler deploy` creates them on the
-// first deploy, and the Worker applies its own D1 migrations on first use.
+// D1 is declared by name only: `wrangler deploy` creates it on the first deploy,
+// and the Worker applies its own D1 migrations on first use.
+// Media (photos/videos) goes to Supabase Storage: set SUPABASE_URL and the
+// SUPABASE_SERVICE_KEY secret in the dashboard. To use Cloudflare R2 instead, add:
+//   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "sythix-unite-media" }]
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sythix-unite",
@@ -16,7 +19,6 @@
   "observability": { "enabled": true },
   "vars": { "APP_ENV": "production" },
   "d1_databases": [{ "binding": "DB", "database_name": "sythix-unite-db", "migrations_dir": "migrations" }],
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "sythix-unite-media" }],
   "durable_objects": { "bindings": [{ "name": "REALTIME", "class_name": "RealtimeRoom" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["RealtimeRoom"] }],
   "triggers": { "crons": ["17 3 * * *"] }

@@ -22,11 +22,12 @@ Browser (React SPA) ──HTTPS──► Cloudflare Worker (src/worker/index.ts)
                                  ├─ /api/realtime?room=… → auth → Durable Object (RealtimeRoom)
                                  └─ everything else → static assets (SPA fallback)
                                Cron (daily 03:17 UTC) → maintenance
+Worker ──server-side key──► Supabase Storage (private bucket: photos, videos, avatars)
 ```
 
 - **One Worker** serves both the SPA (assets binding, `run_worker_first` only for `/api/*`) and the API. This keeps Cloudflare's default "Import a repository" settings working.
 - **D1** stores all relational data. Each `migrations/*.sql` file is bundled into the Worker by `scripts/gen-migrations.mjs` and applied on the first request (`lib/migrate.ts`), tracked in Wrangler's `d1_migrations` table.
-- **R2** stores media at server-generated keys (`media/<user>/<id>`, `avatars/<user>/<id>`). Downloads go through the API, which authorizes against the post's visibility.
+- **Media storage** (`lib/storage.ts`): Supabase Storage via its REST API with a server-side key (default), or an R2 binding. Files are stored at server-generated keys (`media/<user>/<id>`, `avatars/<user>/<id>`). Downloads go through the API, which authorizes against the post's visibility.
 - **Durable Objects:** one `RealtimeRoom` per room (`channel:<id>`, `conv:<id>`, `user:<id>`). The Worker authenticates and authorizes before forwarding the WebSocket. The object fans out events and computes presence. It uses the Hibernation API to avoid duration charges for idle sockets.
 
 ## Request lifecycle
